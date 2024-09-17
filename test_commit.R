@@ -6,7 +6,7 @@ library(dplyr)
 library(lubridate)
 library(broom)
 library(tidyverse)
-
+ 
 #Connection to WRDS
 wrds <- dbConnect(Postgres(),
                   host='wrds-pgdata.wharton.upenn.edu',
