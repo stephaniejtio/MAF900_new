@@ -1,4 +1,5 @@
 # Source: Risk Return, and Equilibrium 1973 
+
 #Libraries
 library(RPostgres)
 library(dplyr)
