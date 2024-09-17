@@ -16,6 +16,7 @@ wrds <- dbConnect(Postgres(),
                   user='stephaniejtio',
                   password='Stefanitio88')
 
+#From crsp data WRDS
 crsp_data <- dbGetQuery(wrds, "
   SELECT permno, date, ret
   FROM crsp.msf
