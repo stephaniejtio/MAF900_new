@@ -10,7 +10,8 @@ wrds <- dbConnect(Postgres(),
                   port=9737,
                   dbname='wrds',
                   sslmode='require',
-                  user='s224294027')
+                  user='replace',
+                  password='replace')
 
 #collect CRSP monthly stock return data 
 msf_db <- tbl(wrds, sql("select * from crsp.msf"))
@@ -75,7 +76,7 @@ crsp_monthly <- tbl(a3_data,"crsp_monthly") |> collect()
 ff_3factors_mon <- tbl(a3_data,"ff_3factors_monthly") |> collect()
 
 #combining the data used in this study to capm_data
-capm_data <- ff_3fact_mon |> mutate(month = floor_date(date, "month")) |> 
+capm_data <- ff_3factors_mon |> mutate(month = floor_date(date, "month")) |> 
   inner_join(
     crsp_monthly |> mutate(month = floor_date(date, "month")) |> 
       select (permno, month, ret),
@@ -88,47 +89,140 @@ capm_data <- ff_3fact_mon |> mutate(month = floor_date(date, "month")) |>
 
 
 
-#start by Stephanie 
-# Calculate excess returns
-capm_data2 <- capm_data %>%
-mutate(stock_excess = ret_excess - mkt_excess)
 
 
 
-# Assign stocks to deciles based on their excess returns
-capm_data2 <- capm_data2 %>%
-group_by(permno) %>%
-mutate(decile = ntile(stock_excess, 10))
-# Calculate average returns by decile
-portfolio_returns <- capm_data2 %>%
-group_by(month, decile) %>%
-summarise(avg_return = mean(stock_excess, na.rm = TRUE),
-.groups = 'drop')
+#Stephanie Start
+#Portfolio formation 
+#Calculate BETA for period 1926-1929
+capm_data1 <- capm_data %>%
+  filter(month >= as.Date("1926-01-01") & month <= as.Date("1929-12-31"))
 
-if (nrow(data) < min_obs) {
-beta <- as.numeric(NA)
-} else {
-fit <- lm(ret_excess ~ mkt_excess, data = capm_data2)
-beta <- as.numeric(coefficients(fit)[2])
-}
+# Ensure that 'mkt_excess' is in percentage form
+#capm_data1$mkt_excess <- as.numeric(capm_data1$mkt_excess)
+#capm_data1$ret_excess <- as.numeric(capm_data1$ret_excess)
 
-#Create a time series B
-estimate_capm <- function(data, min_obs = 1) {
-if (nrow(data) < min_obs) {
-beta <- as.numeric(NA)
-} else {
-fit <- lm(ret_excess ~ mkt_excess, data = capm_data2)
-beta <- as.numeric(coefficients(fit)[2])
-}
-return(beta)
-}
+# Calculate beta for each company
+beta_results <- capm_data1 %>%
+  group_by(permno) %>%
+  do(tidy(lm(ret_excess ~ mkt_excess, data = .)))
 
-   
-capm_data3 <- capm_data2 |> filter(permno == '10000') 
-#Creating Rolling Windows
-slide_period(.x = capm_data3, #input data 
-.f = ~.x, # function or formula
-.i = capm_data3$month, # index for rolling window
-.period = "month", # unit of period 
-.before = 5 # use current and past 5 periods
-) 
+print(beta_results)
+
+
+beta_results_only <- beta_results %>%
+  filter(term == "mkt_excess") %>%
+  select(permno, beta = estimate, std_error = std.error, t_statistic = statistic, p_value = p.value)
+
+print(beta_results_only) # beta results for each of the company 
+
+sum(is.na(beta_results_only$beta)) #check NA values 
+
+#remove for NA beta
+beta_results_only <- beta_results_only %>%
+  filter(!is.na(beta))
+
+
+# rank the betas to divide the companies into 20 portfolios 
+# quantile approach
+# use quantile-based breaks for 20 portfolios
+breaks <- quantile(beta_results_only$beta, probs = seq(0, 1, length.out = 21))
+
+# cut() with these breaks to assign portfolios
+beta_results_ranked <- beta_results_only %>%
+  mutate(portfolio = cut(beta, breaks = breaks, labels = FALSE, include.lowest = TRUE))
+
+portfolio_distribution <- beta_results_ranked %>%
+  group_by(portfolio) %>%
+  summarise(count = n(), .groups = 'drop')
+
+print(portfolio_distribution)
+#from the result, each portfolio has 38 or 39 stocks 
+
+
+
+
+
+
+
+
+
+
+
+#create the summary (data) for each of the portfolio 
+portfolio_summary <- beta_results_ranked %>%
+  group_by(portfolio) %>%
+  summarise(
+    avg_beta = mean(beta),
+    std_dev_beta = sd(beta),
+    count = n() # count number of stocks in each portfolio 
+  )
+print(portfolio_summary)
+
+# visualise to help analysis 
+# to see the distribution of betas across portfolios 
+ggplot(beta_results_ranked, aes(x = factor(portfolio), y = beta, fill = factor(portfolio))) +
+  geom_boxplot() +
+  labs(title = "Distribution of Betas Across Portfolios",
+       x = "Portfolio",
+       y = "Beta") +
+  theme_minimal()
+
+# find the number of stock for each portfolio 
+
+
+
+
+#note
+# 1st period 26-29 
+# define the sample within the period 
+# use the ret_excess
+
+
+
+
+
+# Based on the paper Page 615 section B.Details 
+# allocating securities into 20 portfolios 
+
+#calculate the total number of securities 
+N <- nrow(beta_results_only)
+
+#Calculate the number of securities, middle portfolios
+securities_per_portfolio <- floor(N / 20)
+
+#Calculate the remainder, allocate to first and last portfolios
+remainder <- N - 20 * securities_per_portfolio
+
+#Determine number of securities, first and last portfolios
+first_last_extra <- floor(remainder / 2)
+last_portfolio_extra <- remainder %% 2  # If odd, last portfolio gets an extra security
+
+breaks <- quantile(beta_results_only$beta, probs = seq(0, 1, length.out = 21))
+
+beta_results_ranked <- beta_results_only %>%
+  mutate(portfolio = cut(beta, breaks = breaks, labels = FALSE, include.lowest = TRUE))
+
+portfolio_distribution <- beta_results_ranked %>%
+  group_by(portfolio) %>%
+  summarise(count = n(), .groups = 'drop')
+
+print(portfolio_distribution)
+
+# results based on the paper 
+cat("Total securities (N):", N, "\n")
+cat("Securities per portfolio (middle 18):", securities_per_portfolio, "\n")
+cat("Extra securities for first and last portfolios:", first_last_extra, "\n")
+cat("Extra security for last portfolio (if N is odd):", last_portfolio_extra, "\n")
+
+
+#Assign Securities to Portfolios Based on Ranked Betas
+beta_results_sorted <- beta_results_ranked %>%
+  arrange(beta)
+
+
+
+
+
+
+
