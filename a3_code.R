@@ -88,4 +88,47 @@ capm_data <- ff_3fact_mon |> mutate(month = floor_date(date, "month")) |>
 
 
 
+#start by Stephanie 
+# Calculate excess returns
+capm_data2 <- capm_data %>%
+mutate(stock_excess = ret_excess - mkt_excess)
 
+
+
+# Assign stocks to deciles based on their excess returns
+capm_data2 <- capm_data2 %>%
+group_by(permno) %>%
+mutate(decile = ntile(stock_excess, 10))
+# Calculate average returns by decile
+portfolio_returns <- capm_data2 %>%
+group_by(month, decile) %>%
+summarise(avg_return = mean(stock_excess, na.rm = TRUE),
+.groups = 'drop')
+
+if (nrow(data) < min_obs) {
+beta <- as.numeric(NA)
+} else {
+fit <- lm(ret_excess ~ mkt_excess, data = capm_data2)
+beta <- as.numeric(coefficients(fit)[2])
+}
+
+#Create a time series B
+estimate_capm <- function(data, min_obs = 1) {
+if (nrow(data) < min_obs) {
+beta <- as.numeric(NA)
+} else {
+fit <- lm(ret_excess ~ mkt_excess, data = capm_data2)
+beta <- as.numeric(coefficients(fit)[2])
+}
+return(beta)
+}
+
+   
+capm_data3 <- capm_data2 |> filter(permno == '10000') 
+#Creating Rolling Windows
+slide_period(.x = capm_data3, #input data 
+.f = ~.x, # function or formula
+.i = capm_data3$month, # index for rolling window
+.period = "month", # unit of period 
+.before = 5 # use current and past 5 periods
+) 
