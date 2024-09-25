@@ -8,3 +8,7 @@ As a result, 776 is an even number, so, we use 776/20 = 38.8.
 For the middle 18 portfolios, we use int(776/20), which is 38. 
 For the first and last one, we use int(776/20)+(1/2)(776-20*int(776/20)), which is equal to 46. 
 To sum up, the number of stocks in 1st and 20th portfolio is equal to 46, for 2nd to 19th, they are 38. 
+
+And from row 212, i can see you used the paper method. However, after checking the number of stocks in the portfolio, it seems to be inaccurate. 
+For 1st portfolio, it only has 39 stocks, for the second one, also 39 stocks. 
+We might need to check the codes again. 
