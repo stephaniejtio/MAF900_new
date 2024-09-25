@@ -1,0 +1,10 @@
+Discussion between Kristina and Stephanie
+
+20240925 by kristina
+I saw you used quantile to divide the portfolio, which I am still worrying. 
+From the paper, the method they used can be found in page 615, B. Details. 
+As in our data, after deleting the n/a obs, we have a total of 776 obs. 
+As a result, 776 is an even number, so, we use 776/20 = 38.8. 
+For the middle 18 portfolios, we use int(776/20), which is 38. 
+For the first and last one, we use int(776/20)+(1/2)(776-20*int(776/20)), which is equal to 46. 
+To sum up, the number of stocks in 1st and 20th portfolio is equal to 46, for 2nd to 19th, they are 38. 
