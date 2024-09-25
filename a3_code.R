@@ -168,11 +168,6 @@ ggplot(beta_results_ranked, aes(x = factor(portfolio), y = beta, fill = factor(p
        y = "Beta") +
   theme_minimal()
 
-# find the number of stock for each portfolio 
-
-
-
-
 #note
 # 1st period 26-29 
 # define the sample within the period 
