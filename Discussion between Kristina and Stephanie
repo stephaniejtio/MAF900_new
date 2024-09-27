@@ -12,3 +12,10 @@ To sum up, the number of stocks in 1st and 20th portfolio is equal to 46, for 2n
 And from row 212, i can see you used the paper method. However, after checking the number of stocks in the portfolio, it seems to be inaccurate. 
 For 1st portfolio, it only has 39 stocks, for the second one, also 39 stocks. 
 We might need to check the codes again. 
+
+
+
+Stephanie
+Noted. I'll go through the codes again. 
+I provide two different approaches on the R code, the first one is the quantile method, 
+and the second one is based on the paper page 615 B (Details)
