@@ -1,5 +1,7 @@
 #the following codes are for MAF900 assignment 3 in T3 2024. 
 #start from kristina
+install.packages("broom")
+library(broom)
 library(RPostgres)
 library(tidyverse)
 library(RSQLite)
@@ -12,6 +14,14 @@ wrds <- dbConnect(Postgres(),
                   sslmode='require',
                   user='replace',
                   password='replace')
+
+#connect to kristina's wrds
+wrds <- dbConnect(Postgres(),
+                  host='wrds-pgdata.wharton.upenn.edu',
+                  port=9737,
+                  dbname='wrds',
+                  sslmode='require',
+                  user='s224294027')
 
 #collect CRSP monthly stock return data 
 msf_db <- tbl(wrds, sql("select * from crsp.msf"))
@@ -86,11 +96,6 @@ capm_data <- ff_3factors_mon |> mutate(month = floor_date(date, "month")) |>
   arrange(permno, month) |> 
   drop_na(ret_excess, mkt_excess)
 #finished by kristina 
-
-
-
-
-
 
 #Stephanie Start
 #Portfolio formation 
@@ -209,6 +214,22 @@ cat("Total securities (N):", N, "\n")
 cat("Securities per portfolio (middle 18):", securities_per_portfolio, "\n")
 cat("Extra securities for first and last portfolios:", first_last_extra, "\n")
 cat("Extra security for last portfolio (if N is odd):", last_portfolio_extra, "\n")
+
+# portfolio assigned by using paper method
+# rank based on beta
+beta_results_only <- beta_results_only %>%
+  arrange(beta)
+
+#calculating the size of each porfolio
+portfolio_sizes <- c(
+  securities_per_portfolio + first_last_extra,        # first portfolio
+  rep(securities_per_portfolio, 18),                 # 2nd to 19th portfolio
+  securities_per_portfolio + first_last_extra + last_portfolio_extra  # 20th portfolio
+)
+
+#creat a variable named portfolio
+beta_results_only$portfolio <- rep(1:20, times = portfolio_sizes)
+
 
 
 #Assign Securities to Portfolios Based on Ranked Betas

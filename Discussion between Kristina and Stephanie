@@ -19,3 +19,7 @@ Stephanie
 Noted. I'll go through the codes again. 
 I provide two different approaches on the R code, the first one is the quantile method, 
 and the second one is based on the paper page 615 B (Details)
+
+Kristina (20240929)
+Let us use the paper method to define the portofolio from 1926 to 1929. 
+Please see my work from row 218 to row 231 about the portfolio definition and allocation. If no issues, would you mind deleting the codes of another method to ensure our job is clear to Dr Saikat. 
