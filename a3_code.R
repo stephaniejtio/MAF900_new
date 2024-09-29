@@ -1,6 +1,6 @@
 #the following codes are for MAF900 assignment 3 in T3 2024. 
 #start from kristina
-install.packages("broom")
+#install.packages("broom")
 library(broom)
 library(RPostgres)
 library(tidyverse)
@@ -97,7 +97,12 @@ capm_data <- ff_3factors_mon |> mutate(month = floor_date(date, "month")) |>
   drop_na(ret_excess, mkt_excess)
 #finished by kristina 
 
+
+
+
+
 #Stephanie Start
+
 #Portfolio formation 
 #Calculate BETA for period 1926-1929
 capm_data1 <- capm_data %>%
@@ -111,75 +116,23 @@ capm_data1 <- capm_data %>%
 beta_results <- capm_data1 %>%
   group_by(permno) %>%
   do(tidy(lm(ret_excess ~ mkt_excess, data = .)))
-
+# print the results for beta
 print(beta_results)
 
-
+# filter for the beta results
 beta_results_only <- beta_results %>%
   filter(term == "mkt_excess") %>%
   select(permno, beta = estimate, std_error = std.error, t_statistic = statistic, p_value = p.value)
 
-print(beta_results_only) # beta results for each of the company 
+# beta results for each of the company 
+print(beta_results_only) 
 
-sum(is.na(beta_results_only$beta)) #check NA values 
+#check for NA values 
+sum(is.na(beta_results_only$beta)) 
 
-#remove for NA beta
+#remove NA values from beta
 beta_results_only <- beta_results_only %>%
   filter(!is.na(beta))
-
-
-# rank the betas to divide the companies into 20 portfolios 
-# quantile approach
-# use quantile-based breaks for 20 portfolios
-breaks <- quantile(beta_results_only$beta, probs = seq(0, 1, length.out = 21))
-
-# cut() with these breaks to assign portfolios
-beta_results_ranked <- beta_results_only %>%
-  mutate(portfolio = cut(beta, breaks = breaks, labels = FALSE, include.lowest = TRUE))
-
-portfolio_distribution <- beta_results_ranked %>%
-  group_by(portfolio) %>%
-  summarise(count = n(), .groups = 'drop')
-
-print(portfolio_distribution)
-#from the result, each portfolio has 38 or 39 stocks 
-
-
-
-
-
-
-
-
-
-
-
-#create the summary (data) for each of the portfolio 
-portfolio_summary <- beta_results_ranked %>%
-  group_by(portfolio) %>%
-  summarise(
-    avg_beta = mean(beta),
-    std_dev_beta = sd(beta),
-    count = n() # count number of stocks in each portfolio 
-  )
-print(portfolio_summary)
-
-# visualise to help analysis 
-# to see the distribution of betas across portfolios 
-ggplot(beta_results_ranked, aes(x = factor(portfolio), y = beta, fill = factor(portfolio))) +
-  geom_boxplot() +
-  labs(title = "Distribution of Betas Across Portfolios",
-       x = "Portfolio",
-       y = "Beta") +
-  theme_minimal()
-
-#note
-# 1st period 26-29 
-# define the sample within the period 
-# use the ret_excess
-
-
-
 
 
 # Based on the paper Page 615 section B.Details 
@@ -200,17 +153,22 @@ last_portfolio_extra <- remainder %% 2  # If odd, last portfolio gets an extra s
 
 breaks <- quantile(beta_results_only$beta, probs = seq(0, 1, length.out = 21))
 
+# ranked 
 beta_results_ranked <- beta_results_only %>%
   mutate(portfolio = cut(beta, breaks = breaks, labels = FALSE, include.lowest = TRUE))
 
+# group by portfolio
 portfolio_distribution <- beta_results_ranked %>%
   group_by(portfolio) %>%
   summarise(count = n(), .groups = 'drop')
 
+# distribution of the securities for each portfolio 
 print(portfolio_distribution)
 
 # results based on the paper 
+#Total number of securities / stocks
 cat("Total securities (N):", N, "\n")
+#Number of securities in each portfolio
 cat("Securities per portfolio (middle 18):", securities_per_portfolio, "\n")
 cat("Extra securities for first and last portfolios:", first_last_extra, "\n")
 cat("Extra security for last portfolio (if N is odd):", last_portfolio_extra, "\n")
@@ -229,8 +187,6 @@ portfolio_sizes <- c(
 
 #creat a variable named portfolio
 beta_results_only$portfolio <- rep(1:20, times = portfolio_sizes)
-
-
 
 #Assign Securities to Portfolios Based on Ranked Betas
 beta_results_sorted <- beta_results_ranked %>%
