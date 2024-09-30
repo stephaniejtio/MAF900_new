@@ -1,3 +1,5 @@
+#Archive 29 Sept (before deleting the beta apporach quantile)
+
 #the following codes are for MAF900 assignment 3 in T3 2024. 
 #start from kristina
 #install.packages("broom")
@@ -5,9 +7,6 @@ library(broom)
 library(RPostgres)
 library(tidyverse)
 library(RSQLite)
-library(furrr)
-library(lubridate)
-library(dplyr)
 
 #connect to our wrds
 wrds <- dbConnect(Postgres(),
@@ -88,40 +87,43 @@ a3_data <- dbConnect(
 crsp_monthly <- tbl(a3_data,"crsp_monthly") |> collect()
 ff_3factors_mon <- tbl(a3_data,"ff_3factors_monthly") |> collect()
 
-#combining the data used in this study to capm_data (we use raw return to analyze)
-capm_data <- ff_3factors_mon %>%
-  mutate(month = floor_date(date, "month")) %>%
+#combining the data used in this study to capm_data
+capm_data <- ff_3factors_mon |> mutate(month = floor_date(date, "month")) |> 
   inner_join(
-    crsp_monthly %>%
-      mutate(month = floor_date(date, "month")) %>%
-      select(permno, month, ret),
+    crsp_monthly |> mutate(month = floor_date(date, "month")) |> 
+      select (permno, month, ret),
     by = c('month')
-  ) %>%
-  mutate(
-    raw_ret = ret * 100,          
-    raw_mkt = mkt_excess - rf    
-  ) %>%
-  select(permno, month, raw_ret, raw_mkt) %>%
-  arrange(permno, month) %>%
-  drop_na(raw_ret, raw_mkt)
+  ) |> mutate (ret_excess = (ret*100 - rf)) |> 
+  select (permno, month, ret_excess, mkt_excess) |> 
+  arrange(permno, month) |> 
+  drop_na(ret_excess, mkt_excess)
 #finished by kristina 
 
+
+
+
+
 #Stephanie Start
+
 #Portfolio formation 
 #Calculate BETA for period 1926-1929
 capm_data1 <- capm_data %>%
   filter(month >= as.Date("1926-01-01") & month <= as.Date("1929-12-31"))
 
+# Ensure that 'mkt_excess' is in percentage form
+#capm_data1$mkt_excess <- as.numeric(capm_data1$mkt_excess)
+#capm_data1$ret_excess <- as.numeric(capm_data1$ret_excess)
+
 # Calculate beta for each company
 beta_results <- capm_data1 %>%
   group_by(permno) %>%
-  do(tidy(lm(raw_ret ~ raw_mkt, data = .)))
+  do(tidy(lm(ret_excess ~ mkt_excess, data = .)))
 # print the results for beta
 print(beta_results)
 
 # filter for the beta results
 beta_results_only <- beta_results %>%
-  filter(term == "raw_mkt") %>%
+  filter(term == "mkt_excess") %>%
   select(permno, beta = estimate, std_error = std.error, t_statistic = statistic, p_value = p.value)
 
 # beta results for each of the company 
@@ -133,6 +135,60 @@ sum(is.na(beta_results_only$beta))
 #remove NA values from beta
 beta_results_only <- beta_results_only %>%
   filter(!is.na(beta))
+
+
+# rank the betas to divide the companies into 20 portfolios 
+# quantile approach
+# use quantile-based breaks for 20 portfolios
+breaks <- quantile(beta_results_only$beta, probs = seq(0, 1, length.out = 21))
+
+# cut() with these breaks to assign portfolios
+beta_results_ranked <- beta_results_only %>%
+  mutate(portfolio = cut(beta, breaks = breaks, labels = FALSE, include.lowest = TRUE))
+
+portfolio_distribution <- beta_results_ranked %>%
+  group_by(portfolio) %>%
+  summarise(count = n(), .groups = 'drop')
+
+print(portfolio_distribution)
+#from the result, each portfolio has 38 or 39 stocks 
+
+
+
+
+
+
+
+
+
+
+
+#Create the summary (data) for each of the portfolio 
+portfolio_summary <- beta_results_ranked %>%
+  group_by(portfolio) %>%
+  summarise(
+    avg_beta = mean(beta),
+    std_dev_beta = sd(beta),
+    count = n() # count number of stocks in each portfolio 
+  )
+print(portfolio_summary)
+
+# visualise to help analysis 
+# to see the distribution of betas across portfolios 
+ggplot(beta_results_ranked, aes(x = factor(portfolio), y = beta, fill = factor(portfolio))) +
+  geom_boxplot() +
+  labs(title = "Distribution of Betas Across Portfolios",
+       x = "Portfolio",
+       y = "Beta") +
+  theme_minimal()
+
+#note
+# 1st period 26-29 
+# define the sample within the period 
+# use the ret_excess
+
+
+
 
 
 # Based on the paper Page 615 section B.Details 
@@ -153,22 +209,17 @@ last_portfolio_extra <- remainder %% 2  # If odd, last portfolio gets an extra s
 
 breaks <- quantile(beta_results_only$beta, probs = seq(0, 1, length.out = 21))
 
-# ranked 
 beta_results_ranked <- beta_results_only %>%
   mutate(portfolio = cut(beta, breaks = breaks, labels = FALSE, include.lowest = TRUE))
 
-# group by portfolio
 portfolio_distribution <- beta_results_ranked %>%
   group_by(portfolio) %>%
   summarise(count = n(), .groups = 'drop')
 
-# distribution of the securities for each portfolio 
 print(portfolio_distribution)
 
 # results based on the paper 
-#Total number of securities / stocks
 cat("Total securities (N):", N, "\n")
-#Number of securities in each portfolio
 cat("Securities per portfolio (middle 18):", securities_per_portfolio, "\n")
 cat("Extra securities for first and last portfolios:", first_last_extra, "\n")
 cat("Extra security for last portfolio (if N is odd):", last_portfolio_extra, "\n")
@@ -185,8 +236,10 @@ portfolio_sizes <- c(
   securities_per_portfolio + first_last_extra + last_portfolio_extra  # 20th portfolio
 )
 
-#create a variable named portfolio
+#creat a variable named portfolio
 beta_results_only$portfolio <- rep(1:20, times = portfolio_sizes)
+
+
 
 #Assign Securities to Portfolios Based on Ranked Betas
 beta_results_sorted <- beta_results_ranked %>%
@@ -194,113 +247,7 @@ beta_results_sorted <- beta_results_ranked %>%
 
 
 
-#start from Kristina
-#calculate BETA for period 1930-1934
-capm_data2 <- capm_data %>%
-  filter(month >= as.Date("1930-01-01") & month <= as.Date("1934-12-31"))
-
-#compute the regression model for each permno and extract the standard deviations of residuals
-beta_results2 <- capm_data2 %>%
-  group_by(permno) %>%
-  do({
-    m1 <- lm(raw_ret ~ raw_mkt, data = .)
-    residuals <- resid(m1)  
-    idsr <- sd(residuals) 
-    tidy(m1)%>%
-      mutate(idsr = idsr)
-  })
-
-beta_results_only2 <- beta_results2 %>%
-  filter(term == "raw_mkt") %>%
-  select(permno, beta = estimate, std_error = std.error, t_statistic = statistic, p_value = p.value, idsr = idsr)
-
-#remove for NA beta
-beta_results_only2 <- beta_results_only2 %>%
-  filter(!is.na(beta))
-
-#use inner_join to find matching permno
-matched_results <- beta_results_only2 %>%
-  inner_join(beta_results_only, by = "permno")
-#in this file, beta.x is from initial estimation period, beta.y is from portfolio building period. 
-
-#see how many permno match
-matched_count <- n_distinct(matched_results$permno)
-
-#recalculate the porfolio beta and idiosyncratic risk during initial estimation period
-beta_means_by_portfolio <- matched_results %>%
-  group_by(portfolio) %>%              
-  summarise(mean_beta = mean(beta.x, na.rm = TRUE),
-            mean_idsr = mean(idsr, na.rm = TRUE))
-
-#calculate the portfolio return
-#find the same permno in capm_data2 and matched_results
-matched_results <- capm_data2 %>%
-  inner_join(matched_results, by = "permno")
-
-average_by_portfolio_month <- matched_results %>%
-  group_by(portfolio, month) %>%   #group by portfolio and month
-  summarise(
-    avg_ret = mean(raw_ret, na.rm = TRUE), 
-    avg_mkt = mean(raw_mkt, na.rm = TRUE) 
-  )
-
-#linear regression calculates the R^2 between avg_ret and avg_mkt
-r_squared_by_portfolio <- average_by_portfolio_month %>%
-  group_by(portfolio) %>% 
-  do({
-    model <- lm(avg_ret ~ avg_mkt, data = .)
-    r_squared <- summary(model)$r.squared  
-    data.frame(r_squared = r_squared) 
-  }) %>%
-  ungroup() 
-
-#calculate the standard deviation of avg_ret by portfolio classification
-stddev_by_portfolio <- average_by_portfolio_month %>%
-  group_by(portfolio) %>% 
-  summarise(
-    stddev_avg_ret = sd(avg_ret, na.rm = TRUE)
-  ) %>%
-  ungroup() 
-
-#create a new file named table2 to merge together
-table2 <- stddev_by_portfolio %>%
-  inner_join(r_squared_by_portfolio, by = "portfolio") %>%
-  inner_join(beta_means_by_portfolio, by = "portfolio") 
-#finished by Kristina 
 
 
 
 
-
-#Start by Stephanie 
-
-# Compute average returns per portfolio (Row 5)
-#standard deviation of the residuals
-#idiosyncratic risk
-average_returns_by_portfolio <- average_by_portfolio_month %>%
-  group_by(portfolio) %>%
-  summarise(avg_return = mean(avg_ret, na.rm = TRUE)) %>%
-  ungroup()
-
-
-#Compute the standard error of average returns (Row 6)
-standard_error_by_portfolio <- average_by_portfolio_month %>%
-  group_by(portfolio) %>%
-  summarise(
-    stddev_return = sd(avg_ret, na.rm = TRUE),
-    count = n()  #number of months
-  ) %>%
-  mutate(std_error = stddev_return / sqrt(count)) %>%
-  select(portfolio, std_error)
-#This keep the portfolio and standard error 
-
-# Compute average residual risk per portfolio (Row 7)
-# (Already calculated in `beta_means_by_portfolio$mean_idsr`)
-
-# Merge rows 5, 6, and 7 with existing table2
-table2 <- table2 %>%
-  inner_join(average_returns_by_portfolio, by = "portfolio") %>%
-  inner_join(standard_error_by_portfolio, by = "portfolio")
-
-#View the updated table
-print(table2)
