@@ -23,3 +23,12 @@ and the second one is based on the paper page 615 B (Details)
 Kristina (20240929)
 Let us use the paper method to define the portofolio from 1926 to 1929. 
 Please see my work from row 218 to row 231 about the portfolio definition and allocation. If no issues, would you mind deleting the codes of another method to ensure our job is clear to Dr Saikat. 
+
+Kristina(20240930)
+Hi Stephanie, here are some questions i would like to discuss with you, please pull the new code file, and check it. 
+1. Please note, i already changed the file to collect raw stock return and market return instead of excess return, because the paper is using the raw return to do. Thus, the variable names have been changed to raw_ret and raw_mkt (Note, i already modified the variable names in your part, so you dont need to do it again). 
+2. I add some new libraries. 
+3. Can you let me know the meaning and reason why you do from row 154 to row 174, row 191 to row 193, i am wondering the logic behind these codes. Do you think it is necessary to do that?
+4. Please check my new work after yours, i begin to construct the sample of the initial estimation period and create the first four variables in table 2 in page 620, and merge all into a file named table2. You can do it by following, but please remember to merge all results in table2. 
+5. When i run the regression and check the results, i found my output is signficantly different from the paper's, which made me feel confused. Do you mind helping me figure out the reason and express your opinion on it? Thanks. 
+6. You can continue to do your part, thank you!

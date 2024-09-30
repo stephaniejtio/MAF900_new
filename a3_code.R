@@ -5,6 +5,9 @@ library(broom)
 library(RPostgres)
 library(tidyverse)
 library(RSQLite)
+library(furrr)
+library(lubridate)
+library(dplyr)
 
 #connect to our wrds
 wrds <- dbConnect(Postgres(),
@@ -85,43 +88,40 @@ a3_data <- dbConnect(
 crsp_monthly <- tbl(a3_data,"crsp_monthly") |> collect()
 ff_3factors_mon <- tbl(a3_data,"ff_3factors_monthly") |> collect()
 
-#combining the data used in this study to capm_data
-capm_data <- ff_3factors_mon |> mutate(month = floor_date(date, "month")) |> 
+#combining the data used in this study to capm_data (we use raw return to analyze)
+capm_data <- ff_3factors_mon %>%
+  mutate(month = floor_date(date, "month")) %>%
   inner_join(
-    crsp_monthly |> mutate(month = floor_date(date, "month")) |> 
-      select (permno, month, ret),
+    crsp_monthly %>%
+      mutate(month = floor_date(date, "month")) %>%
+      select(permno, month, ret),
     by = c('month')
-  ) |> mutate (ret_excess = (ret*100 - rf)) |> 
-  select (permno, month, ret_excess, mkt_excess) |> 
-  arrange(permno, month) |> 
-  drop_na(ret_excess, mkt_excess)
+  ) %>%
+  mutate(
+    raw_ret = ret * 100,          
+    raw_mkt = mkt_excess - rf    
+  ) %>%
+  select(permno, month, raw_ret, raw_mkt) %>%
+  arrange(permno, month) %>%
+  drop_na(raw_ret, raw_mkt)
 #finished by kristina 
 
-
-
-
-
 #Stephanie Start
-
 #Portfolio formation 
 #Calculate BETA for period 1926-1929
 capm_data1 <- capm_data %>%
   filter(month >= as.Date("1926-01-01") & month <= as.Date("1929-12-31"))
 
-# Ensure that 'mkt_excess' is in percentage form
-#capm_data1$mkt_excess <- as.numeric(capm_data1$mkt_excess)
-#capm_data1$ret_excess <- as.numeric(capm_data1$ret_excess)
-
 # Calculate beta for each company
 beta_results <- capm_data1 %>%
   group_by(permno) %>%
-  do(tidy(lm(ret_excess ~ mkt_excess, data = .)))
+  do(tidy(lm(raw_ret ~ raw_mkt, data = .)))
 # print the results for beta
 print(beta_results)
 
 # filter for the beta results
 beta_results_only <- beta_results %>%
-  filter(term == "mkt_excess") %>%
+  filter(term == "raw_mkt") %>%
   select(permno, beta = estimate, std_error = std.error, t_statistic = statistic, p_value = p.value)
 
 # beta results for each of the company 
@@ -192,9 +192,79 @@ beta_results_only$portfolio <- rep(1:20, times = portfolio_sizes)
 beta_results_sorted <- beta_results_ranked %>%
   arrange(beta)
 
+#start from Kristina
+#calculate BETA for period 1930-1934
+capm_data2 <- capm_data %>%
+  filter(month >= as.Date("1930-01-01") & month <= as.Date("1934-12-31"))
 
+#compute the regression model for each permno and extract the standard deviations of residuals
+beta_results2 <- capm_data2 %>%
+  group_by(permno) %>%
+  do({
+    m1 <- lm(raw_ret ~ raw_mkt, data = .)
+    residuals <- resid(m1)  
+    idsr <- sd(residuals) 
+    tidy(m1)%>%
+      mutate(idsr = idsr)
+  })
 
+beta_results_only2 <- beta_results2 %>%
+  filter(term == "raw_mkt") %>%
+  select(permno, beta = estimate, std_error = std.error, t_statistic = statistic, p_value = p.value, idsr = idsr)
 
+#remove for NA beta
+beta_results_only2 <- beta_results_only2 %>%
+  filter(!is.na(beta))
+
+#use inner_join to find matching permno
+matched_results <- beta_results_only2 %>%
+  inner_join(beta_results_only, by = "permno")
+#in this file, beta.x is from initial estimation period, beta.y is from portfolio building period. 
+
+#see how many permno match
+matched_count <- n_distinct(matched_results$permno)
+
+#recalculate the porfolio beta and idiosyncratic risk during initial estimation period
+beta_means_by_portfolio <- matched_results %>%
+  group_by(portfolio) %>%              
+  summarise(mean_beta = mean(beta.x, na.rm = TRUE),
+            mean_idsr = mean(idsr, na.rm = TRUE))
+
+#calculate the portfolio return
+#find the same permno in capm_data2 and matched_results
+matched_results <- capm_data2 %>%
+  inner_join(matched_results, by = "permno")
+
+average_by_portfolio_month <- matched_results %>%
+  group_by(portfolio, month) %>%   #group by portfolio and month
+  summarise(
+    avg_ret = mean(raw_ret, na.rm = TRUE), 
+    avg_mkt = mean(raw_mkt, na.rm = TRUE) 
+  )
+
+#linear regression calculates the R^2 between avg_ret and avg_mkt
+r_squared_by_portfolio <- average_by_portfolio_month %>%
+  group_by(portfolio) %>% 
+  do({
+    model <- lm(avg_ret ~ avg_mkt, data = .)
+    r_squared <- summary(model)$r.squared  
+    data.frame(r_squared = r_squared) 
+  }) %>%
+  ungroup() 
+
+#calculate the standard deviation of avg_ret by portfolio classification
+stddev_by_portfolio <- average_by_portfolio_month %>%
+  group_by(portfolio) %>% 
+  summarise(
+    stddev_avg_ret = sd(avg_ret, na.rm = TRUE)
+  ) %>%
+  ungroup() 
+
+#creat a new file named table2 to merge together
+table2 <- stddev_by_portfolio %>%
+  inner_join(r_squared_by_portfolio, by = "portfolio") %>%
+  inner_join(beta_means_by_portfolio, by = "portfolio") 
+#finished by Kristina 
 
 
 
