@@ -32,3 +32,23 @@ Hi Stephanie, here are some questions i would like to discuss with you, please p
 4. Please check my new work after yours, i begin to construct the sample of the initial estimation period and create the first four variables in table 2 in page 620, and merge all into a file named table2. You can do it by following, but please remember to merge all results in table2. 
 5. When i run the regression and check the results, i found my output is signficantly different from the paper's, which made me feel confused. Do you mind helping me figure out the reason and express your opinion on it? Thanks. 
 6. You can continue to do your part, thank you!
+
+
+Stephanie (223935051)
+Hi Kristina 
+The line 154 to 174 is to divide the stocks into the 20 portfolios
+because I tried using the normal approach to allocate the stocks into the portfolio (without the quantile), but ot seems the stocks are all allocated in the same portfolio (it is not
+distributed evenly into the 20 portfolios) 
+I assume it is because of the value of beta that is clustered closely 
+
+   Min.   1st Qu.   Median     Mean   3rd Qu.    Max. 
+-9.5518   0.5976    0.9359    0.9774  1.2848    6.0050 
+
+As a result, stocks ended up being allocated to one single portfolio, because there wasn't enough variation in the 
+beta values to spread them out across multiple portfolios with this method.
+
+line 168 to 174 is optional, it is for a check-point, and we can just change to comment after using the codes
+
+
+
+
