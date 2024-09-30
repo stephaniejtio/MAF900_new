@@ -269,9 +269,6 @@ table2 <- stddev_by_portfolio %>%
 #finished by Kristina 
 
 
-
-
-
 #Start by Stephanie 
 
 # Compute average returns per portfolio (Row 5)
