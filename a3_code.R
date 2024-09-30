@@ -185,12 +185,14 @@ portfolio_sizes <- c(
   securities_per_portfolio + first_last_extra + last_portfolio_extra  # 20th portfolio
 )
 
-#creat a variable named portfolio
+#create a variable named portfolio
 beta_results_only$portfolio <- rep(1:20, times = portfolio_sizes)
 
 #Assign Securities to Portfolios Based on Ranked Betas
 beta_results_sorted <- beta_results_ranked %>%
   arrange(beta)
+
+
 
 #start from Kristina
 #calculate BETA for period 1930-1934
@@ -260,7 +262,7 @@ stddev_by_portfolio <- average_by_portfolio_month %>%
   ) %>%
   ungroup() 
 
-#creat a new file named table2 to merge together
+#create a new file named table2 to merge together
 table2 <- stddev_by_portfolio %>%
   inner_join(r_squared_by_portfolio, by = "portfolio") %>%
   inner_join(beta_means_by_portfolio, by = "portfolio") 
@@ -268,3 +270,35 @@ table2 <- stddev_by_portfolio %>%
 
 
 
+
+
+#Start by Stephanie 
+
+# Compute average returns per portfolio (Row 5)
+average_returns_by_portfolio <- average_by_portfolio_month %>%
+  group_by(portfolio) %>%
+  summarise(avg_return = mean(avg_ret, na.rm = TRUE)) %>%
+  ungroup()
+
+
+#Compute the standard error of average returns (Row 6)
+standard_error_by_portfolio <- average_by_portfolio_month %>%
+  group_by(portfolio) %>%
+  summarise(
+    stddev_return = sd(avg_ret, na.rm = TRUE),
+    count = n()  # number of months
+  ) %>%
+  mutate(std_error = stddev_return / sqrt(count)) %>%
+  select(portfolio, std_error)
+#This keep the portfolio and standard error 
+
+# Compute average residual risk per portfolio (Row 7)
+# (Already calculated in `beta_means_by_portfolio$mean_idsr`)
+
+# Merge rows 5, 6, and 7 with existing table2
+table2 <- table2 %>%
+  inner_join(average_returns_by_portfolio, by = "portfolio") %>%
+  inner_join(standard_error_by_portfolio, by = "portfolio")
+
+#View the updated table
+print(table2)
