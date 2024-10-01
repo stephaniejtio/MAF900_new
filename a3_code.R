@@ -41,18 +41,6 @@ crsp_monthly <- msf_db |>
     altprc, # Last traded price in a month
   ) |> collect()
 
-# save collected data in local database
-a3_data <- dbConnect(
-  SQLite(),
-  "data/a3_data.sqlite",
-  extended_types = TRUE)
-
-dbWriteTable(a3_data,
-             "crsp_monthly",
-             value = crsp_monthly,
-             overwrite = TRUE
-)
-
 #collect FF 3 factor data
 temp <- tempfile(fileext = ".zip")
 download.file("http://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_CSV.zip",temp)
@@ -72,22 +60,6 @@ ff_3factors_mon <- ff_3factors_monthly |>
   filter(date >='1926-01-01' & date <= '2023-12-31') |> 
   select(c('date','mkt_excess','smb','hml','rf'))
 
-#save FF 3 factor monthly data in local database
-dbWriteTable(a3_data,
-             "ff_3factors_monthly",
-             value = ff_3factors_mon,
-             overwrite = TRUE
-)
-
-#collect data
-a3_data <- dbConnect(
-  SQLite(),
-  "data/a3_data.sqlite",
-  extended_types = TRUE)
-
-crsp_monthly <- tbl(a3_data,"crsp_monthly") |> collect()
-ff_3factors_mon <- tbl(a3_data,"ff_3factors_monthly") |> collect()
-
 #combining the data used in this study to capm_data (we use raw return to analyze)
 capm_data <- ff_3factors_mon %>%
   mutate(month = floor_date(date, "month")) %>%
@@ -99,7 +71,7 @@ capm_data <- ff_3factors_mon %>%
   ) %>%
   mutate(
     raw_ret = ret * 100,          
-    raw_mkt = mkt_excess - rf    
+    raw_mkt = mkt_excess + rf    
   ) %>%
   select(permno, month, raw_ret, raw_mkt) %>%
   arrange(permno, month) %>%
@@ -230,7 +202,7 @@ matched_count <- n_distinct(matched_results$permno)
 beta_means_by_portfolio <- matched_results %>%
   group_by(portfolio) %>%              
   summarise(mean_beta = mean(beta.x, na.rm = TRUE),
-            mean_idsr = mean(idsr, na.rm = TRUE))
+            mean_std_beta = mean(std_error.x, na.rm = TRUE))
 
 #calculate the portfolio return
 #find the same permno in capm_data2 and matched_results

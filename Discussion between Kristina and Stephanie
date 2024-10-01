@@ -24,7 +24,7 @@ Kristina (20240929)
 Let us use the paper method to define the portofolio from 1926 to 1929. 
 Please see my work from row 218 to row 231 about the portfolio definition and allocation. If no issues, would you mind deleting the codes of another method to ensure our job is clear to Dr Saikat. 
 
-Kristina(20240930)
+Kristina (20240930)
 Hi Stephanie, here are some questions i would like to discuss with you, please pull the new code file, and check it. 
 1. Please note, i already changed the file to collect raw stock return and market return instead of excess return, because the paper is using the raw return to do. Thus, the variable names have been changed to raw_ret and raw_mkt (Note, i already modified the variable names in your part, so you dont need to do it again). 
 2. I add some new libraries. 
@@ -50,5 +50,11 @@ beta values to spread them out across multiple portfolios with this method.
 line 168 to 174 is optional, it is for a check-point, and we can just change to comment after using the codes
 
 
+Kristina (20241001)
+Hey Stephanie, thanks for your answer. 
+1. Would you mind rechecking your calculation of table 2 row5 (standard deviation of the portfolio residuals), which is not correct. Your result is the average value of average return. In my understanding, you need to use the file named average_by_portfolio created by me, to run the regression following the model (8) in page 616, and then calculate the sd of residuals. Let me know if you have any questions. 
+2. Your calculation of row 6 also needs to be considered again. You need to calculate the security level average standard deviations of residuals. 
+3. Can you go through my previous work again? And then try to understand the meaning of those statistics following by page 617 C. Some observations on the approach, and then redo your part. Thanks. 
+4. I modify something in R.codes, please pull it again and then redo. 
 
 
