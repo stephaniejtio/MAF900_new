@@ -58,3 +58,17 @@ Hey Stephanie, thanks for your answer.
 4. I modify something in R.codes, please pull it again and then redo. 
 
 
+Stephanie (223935051)
+1. Hey Kristina, thank you for the comments, I have gone through your work again, and re-code my work based on the paper's formula
+2. I have re-calculated the standard deviation of the portfolio residuals s(ϵ^p)
+and the average standard deviation of individual security residuals within the portfolio s̅_p,t-1(ε_i)
+
+3. I also did the last part which is the ratio that compares the portfolio’s residual risk (idiosyncratic risk at the portfolio level) 
+to the average residual risk of the securities within the portfolio. (s(ε_p) / s̅_p,t-1(ε_i))
+4. I have push the code as well to git, please pull the code again for the recent ones
+5. let me know if you have any questions or any thoughts, thank you! (I put my comment in the r script as well for further details)
+
+
+
+
+
