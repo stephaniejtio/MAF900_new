@@ -302,16 +302,28 @@ avg_stddev_residuals_by_portfolio2 <- beta_results3 %>%
   summarise(avg_idsr = mean(idsr, na.rm = TRUE))  # Average standard deviation of residuals across securities in the portfolio
 
 
+# Row 7 
+# SD of the portfolio residuals 
+# avg SD of individual security residuals 
+
+#Merge data for SD residuals (row 5) and avg SD of reisduals (row 6)
+residual_risk <- stddev_residuals_by_portfolio %>%
+  inner_join(avg_stddev_residuals_by_portfolio, by = "portfolio")
+
+# Calculate the ratio (s(ε_p) / s̅_p,t-1(ε_i))
+residual_risk <- residual_risk_comparison %>%
+  mutate(ratio = stddev_residuals / avg_idsr)
+ 
 
 
 
-# Compute average residual risk per portfolio (Row 7)
-# (Already calculated in `beta_means_by_portfolio$mean_idsr`)
+
+
 
 # Merge rows 5, 6, and 7 with existing table2
-table2 <- table2 %>%
-  inner_join(average_returns_by_portfolio, by = "portfolio") %>%
-  inner_join(standard_error_by_portfolio, by = "portfolio")
+#table2 <- table2 %>%
+#  inner_join(average_returns_by_portfolio, by = "portfolio") %>%
+#  inner_join(standard_error_by_portfolio, by = "portfolio")
 
 #View the updated table
-print(table2)
+#print(table2)
