@@ -75,6 +75,11 @@ For something new:
 3. I just found table2 is for period between 1934-1938, not 1930-1934. We need to do some modifications to our codes. I alread fixed my part, can you go throught and fix your part?  
 4. For reference, i normally give the suffix of 1 for the results in the portfolio formation period, 2 for the results in initial estimation period, 3 for the results in testing period. 
 
+Stephanie (223935051)
+1. Hey Kristina, I have checked Dr. Saikat's code that you uploaded (mkt return by using the fisher index) 
+2. I did go through the code to check and align with the new approach, and I have updated accordingly 
+3. I also did change the Table 2 construction based on the sample period 1934 - 1938, and I assigned with several new variable names
+(so it is clearer and to avoid using the previous dataframe/data)
 
 
 
