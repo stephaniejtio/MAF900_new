@@ -1,6 +1,7 @@
 #the following codes are for MAF900 assignment 3 in T3 2024. 
 #start from kristina
 #install.packages("broom")
+#install.packages("slider")
 library(broom)
 library(RPostgres)
 library(tidyverse)
@@ -8,6 +9,10 @@ library(RSQLite)
 library(furrr)
 library(lubridate)
 library(dplyr)
+library(slider)
+library(purrr)
+library(modelsummary)
+library(tseries)
 
 #connect to our wrds
 wrds <- dbConnect(Postgres(),
@@ -37,43 +42,27 @@ crsp_monthly <- msf_db |>
     permno, # Security identifier
     date, # Date of the observation
     ret, # Return
-    shrout, # Shares outstanding (in thousands)
-    altprc, # Last traded price in a month
   ) |> collect()
 
-#collect FF 3 factor data
-temp <- tempfile(fileext = ".zip")
-download.file("http://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_CSV.zip",temp)
-temp1<- unzip(temp, exdir = ".")
-ff_3factors_monthly <- read_csv(temp1, skip=5) 
-names(ff_3factors_monthly) <- c('dt', 'rmrf', 'smb', 'hml', 'rf')
-unlink(temp)
-unlink(temp1)
+#stock and exchange identifier
+msenames_db <- tbl(wrds, sql("select * from crsp.msenames"))
 
-#create date variable, filter the data for the sample period, convert chr data to numeric
-ff_3factors_mon <- ff_3factors_monthly |> 
-  filter(nchar(dt) == 6) |> 
-  mutate(yr = str_sub(dt,1,4), mon= str_sub(dt,-2,-1),  
-         date = make_date(year= yr, month = mon, day = 01), 
-         mkt_excess = as.numeric(rmrf), smb = as.numeric(smb),
-         hml = as.numeric(hml), rf = as.numeric(rf)) |> 
-  filter(date >='1926-01-01' & date <= '2023-12-31') |> 
-  select(c('date','mkt_excess','smb','hml','rf'))
+crsp_stockids <- msenames_db |>
+  select (permno, primexch)|> collect()|>unique()|> filter(primexch == 'N')
 
-#combining the data used in this study to capm_data (we use raw return to analyze)
-capm_data <- ff_3factors_mon %>%
-  mutate(month = floor_date(date, "month")) %>%
-  inner_join(
-    crsp_monthly %>%
-      mutate(month = floor_date(date, "month")) %>%
-      select(permno, month, ret),
-    by = c('month')
-  ) %>%
-  mutate(
-    raw_ret = ret * 100,          
-    raw_mkt = mkt_excess + rf    
-  ) %>%
-  select(permno, month, raw_ret, raw_mkt) %>%
+capm_data <- crsp_monthly |> inner_join(
+  crsp_stockids |>
+    select(permno, primexch), by = c("permno"))
+
+#create Fisher Index - for Rm
+fi_mkt <- capm_data|> group_by(date)|> summarise(raw_mkt = mean(ret, na.rm = TRUE))
+
+#combine stock return and market return i.e. fisher index return
+capm_data <- capm_data %>%
+  select(permno, date, ret) %>%
+  rename(raw_ret = ret) %>%
+  inner_join(fi_mkt, by = c("date")) %>%
+  rename(month = date) %>%
   arrange(permno, month) %>%
   drop_na(raw_ret, raw_mkt)
 #finished by kristina 
@@ -190,34 +179,53 @@ beta_results_only2 <- beta_results2 %>%
 beta_results_only2 <- beta_results_only2 %>%
   filter(!is.na(beta))
 
+#sort by portfolio in matched_results and extract unique permno
+permno_by_portfolio1 <- beta_results_only %>%
+  arrange(portfolio) %>%            
+  group_by(portfolio) %>%          
+  distinct(permno) %>%      
+  ungroup() 
+
+#calculate the portfolio return during 1935-1938
+#set a new dataset for period 1935-1938
+capm_data3 <- capm_data %>%
+  filter(month >= as.Date("1935-01-01") & month <= as.Date("1938-12-31"))
+
+#find stocks still listed
 #use inner_join to find matching permno
-matched_results <- beta_results_only2 %>%
-  inner_join(beta_results_only, by = "permno")
-#in this file, beta.x is from initial estimation period, beta.y is from portfolio building period. 
+#merge by permno and automatically discard unmatched lines
+capm_data3 <- capm_data3 %>%
+  inner_join(permno_by_portfolio1, by = "permno")
+
+#sort by portfolio in matched_results and extract unique permno
+permno_by_portfolio3 <- capm_data3 %>%
+  arrange(portfolio) %>%            
+  group_by(portfolio) %>%          
+  distinct(permno) %>%      
+  ungroup() 
+
+#use inner_join to find matching permno
+beta_results_only2 <- beta_results_only2 %>%
+  inner_join(permno_by_portfolio3, by = "permno")
 
 #see how many permno match
-matched_count <- n_distinct(matched_results$permno)
+matched_count <- n_distinct(beta_results_only2$permno)
 
-#recalculate the porfolio beta and idiosyncratic risk during initial estimation period
-beta_means_by_portfolio <- matched_results %>%
+#calculate the porfolio beta and standard errors of beta
+beta_means_by_portfolio2 <- beta_results_only2 %>%
   group_by(portfolio) %>%              
-  summarise(mean_beta = mean(beta.x, na.rm = TRUE),
-            mean_std_beta = mean(std_error.x, na.rm = TRUE))
+  summarise(mean_beta = mean(beta, na.rm = TRUE),
+            mean_std_beta = mean(std_error, na.rm = TRUE))
 
-#calculate the portfolio return
-#find the same permno in capm_data2 and matched_results
-matched_results <- capm_data2 %>%
-  inner_join(matched_results, by = "permno")
-
-average_by_portfolio_month <- matched_results %>%
-  group_by(portfolio, month) %>%   #group by portfolio and month
-  summarise(
-    avg_ret = mean(raw_ret, na.rm = TRUE), 
-    avg_mkt = mean(raw_mkt, na.rm = TRUE) 
-  )
+#calculate the monthly portfolio return
+average_by_portfolio_month3 <- capm_data3 %>%
+  group_by(portfolio, month) %>%        
+  summarize(avg_ret = mean(raw_ret, na.rm = TRUE), 
+            avg_mkt = mean(raw_mkt, na.rm = TRUE)) %>%
+  ungroup()
 
 #linear regression calculates the R^2 between avg_ret and avg_mkt
-r_squared_by_portfolio <- average_by_portfolio_month %>%
+r_squared_by_portfolio3 <- average_by_portfolio_month3 %>%
   group_by(portfolio) %>% 
   do({
     model <- lm(avg_ret ~ avg_mkt, data = .)
@@ -227,7 +235,7 @@ r_squared_by_portfolio <- average_by_portfolio_month %>%
   ungroup() 
 
 #calculate the standard deviation of avg_ret by portfolio classification
-stddev_by_portfolio <- average_by_portfolio_month %>%
+stddev_by_portfolio3 <- average_by_portfolio_month3 %>%
   group_by(portfolio) %>% 
   summarise(
     stddev_avg_ret = sd(avg_ret, na.rm = TRUE)
@@ -235,12 +243,10 @@ stddev_by_portfolio <- average_by_portfolio_month %>%
   ungroup() 
 
 #create a new file named table2 to merge together
-table2 <- stddev_by_portfolio %>%
-  inner_join(r_squared_by_portfolio, by = "portfolio") %>%
-  inner_join(beta_means_by_portfolio, by = "portfolio") 
+table2 <- stddev_by_portfolio3 %>%
+  inner_join(r_squared_by_portfolio3, by = "portfolio") %>%
+  inner_join(beta_means_by_portfolio2, by = "portfolio") 
 #finished by Kristina 
-
-
 
 
 #Start by Stephanie 
@@ -314,10 +320,6 @@ residual_risk <- stddev_residuals_by_portfolio %>%
 residual_risk <- residual_risk_comparison %>%
   mutate(ratio = stddev_residuals / avg_idsr)
  
-
-
-
-
 
 
 # Merge rows 5, 6, and 7 with existing table2

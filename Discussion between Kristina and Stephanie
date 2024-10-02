@@ -68,6 +68,13 @@ to the average residual risk of the securities within the portfolio. (s(ε_p) / 
 4. I have push the code as well to git, please pull the code again for the recent ones
 5. let me know if you have any questions or any thoughts, thank you! (I put my comment in the r script as well for further details)
 
+Kristina(20241002)
+For something new:
+1. I follow Saikat's codes to create new mkt return using fisher index. 
+2. I push Saikat's codes to our github, you can refer and modify your part if necessary. 
+3. I just found table2 is for period between 1934-1938, not 1930-1934. We need to do some modifications to our codes. I alread fixed my part, can you go throught and fix your part?  
+4. For reference, i normally give the suffix of 1 for the results in the portfolio formation period, 2 for the results in initial estimation period, 3 for the results in testing period. 
+
 
 
 
