@@ -112,6 +112,7 @@ remainder <- N - 20 * securities_per_portfolio
 first_last_extra <- floor(remainder / 2)
 last_portfolio_extra <- remainder %% 2  # If odd, last portfolio gets an extra security
 
+
 breaks <- quantile(beta_results_only$beta, probs = seq(0, 1, length.out = 21))
 
 # ranked 
@@ -250,22 +251,22 @@ table2 <- stddev_by_portfolio3 %>%
 
 
 #Start by Stephanie 
-
+# updated with sample size 1935 to 1938
 # Row 5
 # standard deviation of the portfolio residuals
 # idiosyncratic risk at portfolio
 
 #regression for each portfolio to get the residuals
-portfolio_residuals <- average_by_portfolio_month %>%
+portfolio_residuals3 <- average_by_portfolio_month3 %>%
   group_by(portfolio) %>%
   do({
-    model <- lm(avg_ret ~ avg_mkt, data = .)  # Regress avg_ret on avg_mkt for each portfolio
-    residuals <- resid(model)  # Extract the residuals from the model
-    data.frame(month = .$month, residuals = residuals)  # Return the residuals and month
+    model <- lm(avg_ret ~ avg_mkt, data = .)  
+    residuals <- resid(model)  
+    data.frame(month = .$month, residuals = residuals)
   })
 
 #calculate the standard deviation of residuals for each portfolio 
-stddev_residuals_by_portfolio <- portfolio_residuals %>%
+stddev_residuals_by_portfolio3 <- portfolio_residuals3 %>%
   group_by(portfolio) %>%
   summarise(stddev_residuals = sd(residuals, na.rm = TRUE))  # Standard deviation of residuals
 print(stddev_residuals_by_portfolio)
@@ -277,7 +278,7 @@ print(stddev_residuals_by_portfolio)
 # we can reuse the regression model from previous ones (beta_results2)
 # however we need to assign each security to its portfolio
 # this will return specifically idsr and permno
-beta_results3 <- capm_data2 %>%
+beta_results3 <- capm_data3 %>%
   group_by(permno) %>%
   do({
     model <- lm(raw_ret ~ raw_mkt, data = .)
@@ -289,7 +290,7 @@ beta_results3 <- capm_data2 %>%
 # Assign each security to its portfolio (based on earlier portfolio classification)
 # Match each security with its portfolio
 beta_results3 <- beta_results3 %>%
-  inner_join(beta_results_only, by = "permno")  
+  inner_join(permno_by_portfolio1, by = "permno")  
 
 # Calculate the average standard deviation of residuals (idsr) for each portfolio
 # Average standard deviation of residuals across securities in the portfolio
@@ -300,7 +301,7 @@ avg_stddev_residuals_by_portfolio <- beta_results3 %>%
 
 # option 2: using beta_results2
 beta_results3 <- beta_results2 %>%
-  inner_join(beta_results_only, by = "permno")  # Match each security with its portfolio
+  inner_join(beta_results_only2, by = "permno")  # Match each security with its portfolio
 
 # Calculate the average standard deviation of residuals (idsr) for each portfolio
 avg_stddev_residuals_by_portfolio2 <- beta_results3 %>%
@@ -313,11 +314,11 @@ avg_stddev_residuals_by_portfolio2 <- beta_results3 %>%
 # avg SD of individual security residuals 
 
 #Merge data for SD residuals (row 5) and avg SD of reisduals (row 6)
-residual_risk <- stddev_residuals_by_portfolio %>%
-  inner_join(avg_stddev_residuals_by_portfolio, by = "portfolio")
+residual_risk <- stddev_residuals_by_portfolio3 %>%
+  inner_join(avg_stddev_residuals_by_portfolio2, by = "portfolio")
 
 # Calculate the ratio (s(ε_p) / s̅_p,t-1(ε_i))
-residual_risk <- residual_risk_comparison %>%
+residual_risk <- residual_risk %>%
   mutate(ratio = stddev_residuals / avg_idsr)
  
 
