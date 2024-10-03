@@ -212,11 +212,97 @@ beta_results_only2 <- beta_results_only2 %>%
 #see how many permno match
 matched_count <- n_distinct(beta_results_only2$permno)
 
-#calculate the porfolio beta and standard errors of beta
+#calculate the porfolio beta and standard errors of beta during 1930-1934.
 beta_means_by_portfolio2 <- beta_results_only2 %>%
   group_by(portfolio) %>%              
   summarise(mean_beta = mean(beta, na.rm = TRUE),
             mean_std_beta = mean(std_error, na.rm = TRUE))
+
+#calculate the porfolio beta and standard errors of beta during 1930-1935.
+#filter the data by date range and group by permno, run the regression.
+beta_means_by_portfolio2 <- capm_data %>%
+  filter(month >= as.Date("1930-01-01") & month <= as.Date("1935-12-31")) %>% 
+  group_by(permno) %>%
+  do({
+    m1 <- lm(raw_ret ~ raw_mkt, data = .)   
+    residuals <- resid(m1)                 
+    idsr <- sd(residuals)                  
+    tidy_m1 <- tidy(m1)                    
+    data.frame(
+      beta = tidy_m1$estimate[2],            
+      std_error = tidy_m1$std.error[2],     
+      idsr = idsr                           
+    )
+  }) %>%
+  ungroup()%>%
+  inner_join(permno_by_portfolio3, by = "permno") %>%  
+  group_by(portfolio) %>%
+  summarise(
+    mean_beta = mean(beta, na.rm = TRUE),        
+    mean_std_beta = mean(std_error, na.rm = TRUE)  
+  ) %>%
+  ungroup()%>%
+  inner_join(beta_means_by_portfolio2, by = "portfolio")
+
+#calculate the porfolio beta and standard errors of beta during 1930-1936.
+#filter the data by date range and group by permno, run the regression.
+beta_means_by_portfolio2 <- capm_data %>%
+  filter(month >= as.Date("1930-01-01") & month <= as.Date("1936-12-31")) %>% 
+  group_by(permno) %>%
+  do({
+    m1 <- lm(raw_ret ~ raw_mkt, data = .)   
+    residuals <- resid(m1)                 
+    idsr <- sd(residuals)                  
+    tidy_m1 <- tidy(m1)                    
+    data.frame(
+      beta = tidy_m1$estimate[2],            
+      std_error = tidy_m1$std.error[2],     
+      idsr = idsr                           
+    )
+  }) %>%
+  ungroup()%>%
+  inner_join(permno_by_portfolio3, by = "permno") %>%  
+  group_by(portfolio) %>%
+  summarise(
+    mean_beta = mean(beta, na.rm = TRUE),        
+    mean_std_beta = mean(std_error, na.rm = TRUE)  
+  ) %>%
+  ungroup()%>%
+  inner_join(beta_means_by_portfolio2, by = "portfolio")
+
+#calculate the porfolio beta and standard errors of beta during 1930-1937.
+#filter the data by date range and group by permno, run the regression.
+beta_means_by_portfolio2 <- capm_data %>%
+  filter(month >= as.Date("1930-01-01") & month <= as.Date("1937-12-31")) %>% 
+  group_by(permno) %>%
+  do({
+    m1 <- lm(raw_ret ~ raw_mkt, data = .)   
+    residuals <- resid(m1)                 
+    idsr <- sd(residuals)                  
+    tidy_m1 <- tidy(m1)                    
+    data.frame(
+      beta = tidy_m1$estimate[2],            
+      std_error = tidy_m1$std.error[2],     
+      idsr = idsr                           
+    )
+  }) %>%
+  ungroup()%>%
+  inner_join(permno_by_portfolio3, by = "permno") %>%  
+  group_by(portfolio) %>%
+  summarise(
+    mean_beta = mean(beta, na.rm = TRUE),        
+    mean_std_beta = mean(std_error, na.rm = TRUE)  
+  ) %>%
+  ungroup()%>%
+  inner_join(beta_means_by_portfolio2, by = "portfolio")
+
+#
+beta_means_by_portfolio2 <- beta_means_by_portfolio2 %>%
+  group_by(portfolio) %>%
+  summarise(
+    mean_beta_avg = across(starts_with("mean_beta"), mean, na.rm = TRUE) %>% rowMeans(na.rm = TRUE),
+    mean_std_beta_avg = across(starts_with("mean_std_beta"), mean, na.rm = TRUE) %>% rowMeans(na.rm = TRUE)
+  )
 
 #calculate the monthly portfolio return
 average_by_portfolio_month3 <- capm_data3 %>%

@@ -81,6 +81,9 @@ Stephanie (223935051)
 3. I also did change the Table 2 construction based on the sample period 1934 - 1938, and I assigned with several new variable names
 (so it is clearer and to avoid using the previous dataframe/data)
 
-
-
+Kristina (20241003)
+Hi Stephanie.
+1. I changed the beta calculation in table 2 (row1, row2), as i suddenly found that beta should be updated year by year, not just used the period of 1930-1934, but also 1930-1935, 1930-1936 and so on. Please see my new work, and changed yours. 
+2. For the variable row 6 you calculated, note, the mark is t-1, which means you need to use the one period before testing period (what i explained in 1.), please go through the slides Dr Saikat showed in the class (Remember? He onced explained to us how we use the beta in the testing period) and page617 c. in the paper. 
+3. I am not pretty sure that i did it correctly, please go through the paper and let me know if you have any new thoughts. 
 
