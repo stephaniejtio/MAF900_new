@@ -354,56 +354,65 @@ portfolio_residuals3 <- average_by_portfolio_month3 %>%
 
 #calculate the standard deviation of residuals for each portfolio 
 #Suffix 3
+# Standard deviation of residuals
 stddev_residuals_by_portfolio3 <- portfolio_residuals3 %>%
   group_by(portfolio) %>%
-  summarise(stddev_residuals = sd(residuals, na.rm = TRUE))  # Standard deviation of residuals
+  summarise(stddev_residuals = sd(residuals, na.rm = TRUE))  
 print(stddev_residuals_by_portfolio)
 
 
 
 
-# Row 6, suffix 3 (testing period and Idiosyncratic risk)
-# we can reuse the regression model from previous ones (beta_results2)
-# however we need to assign each security to its portfolio
+# Row 6, average standard deviation of residuals (idsr) for each security in t-1 period (1930-1937)
 # this will return specifically idsr and permno
-beta_results3 <- capm_data3 %>%
-  group_by(permno) %>%
-  do({
-    model <- lm(raw_ret ~ raw_mkt, data = .)
-    residuals <- resid(model)  
-    idsr <- sd(residuals)  
-    data.frame(permno = unique(.$permno), idsr = idsr)  
-  })
+#Updated
+#calculate beta and idsr for each year range 
+#Function: calculate idsr (avg standard deviation of residuals) for each security in t-1
+calculate_avg_idsr_t1 <- function(end_date, permno_by_portfolio) {
+  # t-1 start date by subtracting one year from end_date
+  start_date <- as.Date(paste0(as.numeric(format(as.Date(end_date), "%Y")) - 1, "-01-01"))
+  
+  capm_data %>%
+    filter(month >= start_date & month <= as.Date(end_date)) %>%  # t-1 period (previous year)
+    group_by(permno) %>%
+    do({
+      model <- lm(raw_ret ~ raw_mkt, data = .)  
+      residuals <- resid(model) 
+      idsr <- sd(residuals)  
+      data.frame(permno = unique(.$permno), idsr = idsr)  
+    }) %>%
+    ungroup() %>%
+    inner_join(permno_by_portfolio, by = "permno")  
+}
 
-# Assign each security to its portfolio (based on earlier portfolio classification)
-# Match each security with its portfolio
-beta_results3 <- beta_results3 %>%
-  inner_join(permno_by_portfolio1, by = "permno")  
+# idsr for t-1 periods
+avg_idsr_1935_t1 <- calculate_avg_idsr_t1("1935-12-31", permno_by_portfolio3) 
+avg_idsr_1936_t1 <- calculate_avg_idsr_t1("1936-12-31", permno_by_portfolio3) 
+avg_idsr_1937_t1 <- calculate_avg_idsr_t1("1937-12-31", permno_by_portfolio3) 
 
-# Calculate the average standard deviation of residuals (idsr) for each portfolio
-# Average standard deviation of residuals across securities in the portfolio
-avg_stddev_residuals_by_portfolio <- beta_results3 %>%
+# t-1 results for different years
+# Calculate average standard deviation of residuals
+avg_stddev_residuals_by_portfolio_t1 <- list(
+  avg_idsr_1935_t1,
+  avg_idsr_1936_t1,
+  avg_idsr_1937_t1
+) %>%
+  bind_rows() %>%
   group_by(portfolio) %>%
   summarise(avg_idsr = mean(idsr, na.rm = TRUE))  
 
+print(avg_stddev_residuals_by_portfolio_t1)
+#######
 
-# option 2: using beta_results2
-beta_results3 <- beta_results2 %>%
-  inner_join(beta_results_only2, by = "permno")  # Match each security with its portfolio
 
-# Calculate the average standard deviation of residuals (idsr) for each portfolio (suffix 3)
-avg_stddev_residuals_by_portfolio2 <- beta_results3 %>%
-  group_by(portfolio) %>%
-  summarise(avg_idsr = mean(idsr, na.rm = TRUE))  #Average standard deviation of residuals across securities in the portfolio
 
 
 # Row 7 
 # SD of the portfolio residuals 
 # avg SD of individual security residuals 
-
 #Merge data for SD residuals (row 5) and avg SD of reisduals (row 6)
 residual_risk <- stddev_residuals_by_portfolio3 %>%
-  inner_join(avg_stddev_residuals_by_portfolio2, by = "portfolio")
+  inner_join(avg_stddev_residuals_by_portfolio_t1, by = "portfolio")
 
 # Calculate the ratio (s(ε_p) / s̅_p,t-1(ε_i)), suffix 3
 residual_risk <- residual_risk %>%
