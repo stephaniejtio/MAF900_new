@@ -87,3 +87,13 @@ Hi Stephanie.
 2. For the variable row 6 you calculated, note, the mark is t-1, which means you need to use the one period before testing period (what i explained in 1.), please go through the slides Dr Saikat showed in the class (Remember? He onced explained to us how we use the beta in the testing period) and page617 c. in the paper. 
 3. I am not pretty sure that i did it correctly, please go through the paper and let me know if you have any new thoughts. 
 
+Stephanie (223935051)
+Hi Kristina
+1. I have updated my code (calculation for table 2) based on the beta which should be updated year by year. 
+2. Row 6, I have updated my code so it is t-1 (calculate idsr (avg standard deviation of residuals) for each security in t-1)
+3. A suggestion, instead of creating three different functions for each period. we can use one function 
+function(end_date, permno_by_portfolio)
+create a new variable for each period and refer back to the function with each of period (Please refer to the code I updated) 
+Please let me know if you have any inputs :) 
+
+
