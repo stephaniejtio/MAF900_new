@@ -420,10 +420,91 @@ residual_risk <- residual_risk %>%
  
 
 
-# Merge rows 5, 6, and 7 with existing table2
-#table2 <- table2 %>%
-#  inner_join(average_returns_by_portfolio, by = "portfolio") %>%
-#  inner_join(standard_error_by_portfolio, by = "portfolio")
 
-#View the updated table
-#print(table2)
+
+#########################################
+# Stephanie starts, work in progress 
+# Repeat the calculation for all periods 
+# Function to calculate portfolio betas and residuals 
+calculate_portfolio_betas <- function(data, start_date, end_date) {
+  capm_data_filtered <- data %>%
+    filter(month >= as.Date(start_date) & month <= as.Date(end_date))
+  
+  beta_results <- capm_data_filtered %>%
+    group_by(permno) %>%
+    do({
+      model <- lm(raw_ret ~ raw_mkt, data = .)
+      residuals <- resid(model)
+      idsr <- sd(residuals)
+      tidy_model <- tidy(model)
+      data.frame(
+        permno = unique(.$permno),
+        beta = tidy_model$estimate[2],
+        idsr = idsr,
+        std_error = tidy_model$std.error[2]
+      )
+    }) %>%
+    ungroup()
+  
+  return(beta_results)
+}
+
+# Function assigning securities to portfolios based on beta rankings
+assign_to_portfolios <- function(beta_data, num_portfolios = 20) {
+  # remove rows with NA values in beta column
+  beta_data <- beta_data %>%
+    filter(!is.na(beta) & !is.nan(beta))
+  
+  breaks <- quantile(beta_data$beta, probs = seq(0, 1, length.out = num_portfolios + 1))
+  
+  beta_data <- beta_data %>%
+    mutate(portfolio = cut(beta, breaks = breaks, labels = FALSE, include.lowest = TRUE))
+  
+  return(beta_data)
+}
+
+# Function calculating portfolio returns
+calculate_portfolio_returns <- function(data, portfolios) {
+  data %>%
+    inner_join(portfolios, by = "permno") %>%
+    group_by(portfolio, month) %>%
+    summarise(
+      avg_ret = mean(raw_ret, na.rm = TRUE),
+      avg_mkt = mean(raw_mkt, na.rm = TRUE)
+    ) %>%
+    ungroup()
+}
+
+# function to automate the tests
+perform_fama_macbeth_tests <- function(data, periods, portfolios, num_portfolios = 20) {
+  results <- list()
+  
+  for (period in periods) {
+    #Calculate betas for the given period
+    beta_results <- calculate_portfolio_betas(data, period$start, period$end)
+    
+    #Assign securities to portfolios based on beta
+    portfolio_assignments <- assign_to_portfolios(beta_results, num_portfolios)
+    
+    #Calculate portfolio returns for the next period
+    portfolio_returns <- calculate_portfolio_returns(data, portfolio_assignments)
+    
+    #Store results for the period
+    results[[paste0("Period_", period$start, "_", period$end)]] <- list(
+      betas = beta_results,
+      portfolios = portfolio_assignments,
+      returns = portfolio_returns
+    )
+  }
+  return(results)
+}
+
+# Define periods (years) 
+periods <- list(
+  list(start = "1926-01-01", end = "1929-12-31"),
+  list(start = "1930-01-01", end = "1934-12-31"),
+  list(start = "1935-01-01", end = "1938-12-31")
+  # Add portfolios (continue)
+)
+
+results <- perform_fama_macbeth_tests(capm_data, periods, permno_by_portfolio1)
