@@ -97,3 +97,14 @@ create a new variable for each period and refer back to the function with each o
 Please let me know if you have any inputs :) 
 
 
+Stephanie (223935051)
+Hi Kristina, I have created a function to automate and repeat the calculation of:
+1. Function to calculate portfolio betas and residuals
+2. Function to assign securities to portfolios based on beta rankings, portfolio allocation 
+3. Function to calculate portfolio returns
+4. Function to calculate betas for the given period, assign securities to portfolios based on beta, 
+calculate portfolio returns for the next period, save the results in each of the periods 
+5. the list of periods can be adjusted and modified based on the required periods
+6. Feel free to give any inputs and let me know if you have any questions 
+Thank you!
+
