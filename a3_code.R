@@ -423,7 +423,7 @@ residual_risk <- residual_risk %>%
 
 
 #########################################
-# Stephanie starts, work in progress 
+# Stephanie start, work in progress 
 # Repeat the calculation for all periods 
 # Function to calculate portfolio betas and residuals 
 calculate_portfolio_betas <- function(data, start_date, end_date) {
@@ -500,11 +500,139 @@ perform_fama_macbeth_tests <- function(data, periods, portfolios, num_portfolios
 }
 
 # Define periods (years) 
+#Only betas, only portfolio formation
 periods <- list(
   list(start = "1926-01-01", end = "1929-12-31"),
-  list(start = "1930-01-01", end = "1934-12-31"),
-  list(start = "1935-01-01", end = "1938-12-31")
+  list(start = "1927-01-01", end = "1933-12-31"),
+  list(start = "1931-01-01", end = "1937-12-31")
   # Add portfolios (continue)
 )
 
 results <- perform_fama_macbeth_tests(capm_data, periods, permno_by_portfolio1)
+
+
+
+
+
+
+#UPDATE FUnction
+
+
+# Generalized function to perform Fama-MacBeth type analysis for a given period
+run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end, estimation_end, testing_start, testing_end) {
+  
+  # Portfolio Formation Period: Calculate BETA for portfolio_start to portfolio_end
+  portfolio_data <- capm_data %>%
+    filter(month >= as.Date(portfolio_start) & month <= as.Date(portfolio_end))
+  
+  beta_results <- portfolio_data %>%
+    group_by(permno) %>%
+    do(tidy(lm(raw_ret ~ raw_mkt, data = .)))
+  
+  # Filter beta results and assign portfolios
+  beta_results_only <- beta_results %>%
+    filter(term == "raw_mkt") %>%
+    select(permno, beta = estimate, std_error = std.error, t_statistic = statistic, p_value = p.value) %>%
+    filter(!is.na(beta))
+  
+  # Calculate the number of securities and assign portfolios based on ranked betas
+  N <- nrow(beta_results_only)
+  securities_per_portfolio <- floor(N / 20)
+  remainder <- N - 20 * securities_per_portfolio
+  first_last_extra <- floor(remainder / 2)
+  last_portfolio_extra <- remainder %% 2
+  
+  breaks <- quantile(beta_results_only$beta, probs = seq(0, 1, length.out = 21))
+  beta_results_ranked <- beta_results_only %>%
+    mutate(portfolio = cut(beta, breaks = breaks, labels = FALSE, include.lowest = TRUE))
+  
+  portfolio_sizes <- c(
+    securities_per_portfolio + first_last_extra,        # First portfolio
+    rep(securities_per_portfolio, 18),                 # Middle portfolios
+    securities_per_portfolio + first_last_extra + last_portfolio_extra  # Last portfolio
+  )
+  
+  beta_results_only$portfolio <- rep(1:20, times = portfolio_sizes)
+  beta_results_sorted <- beta_results_ranked %>% arrange(beta)
+  
+  # Initial Estimation Period: Calculate BETA year by year
+  estimation_period_data <- capm_data %>%
+    filter(month >= as.Date(portfolio_end) & month <= as.Date(estimation_end))
+  
+  beta_results_by_year <- lapply(seq(1930, as.numeric(format(as.Date(estimation_end), "%Y"))), function(end_year) {
+    data <- estimation_period_data %>%
+      filter(month >= as.Date(paste0(end_year - 4, "-01-01")) & month <= as.Date(paste0(end_year, "-12-31")))
+    
+    beta_year_results <- data %>%
+      group_by(permno) %>%
+      do({
+        model <- lm(raw_ret ~ raw_mkt, data = .)
+        residuals <- resid(model)
+        idsr <- sd(residuals)
+        tidy_m1 <- tidy(model)
+        data.frame(
+          beta = tidy_m1$estimate[2],
+          std_error = tidy_m1$std.error[2],
+          idsr = idsr
+        )
+      })
+    
+    return(beta_year_results)
+  })
+  
+  # Combine beta results by year
+  beta_results_combined <- bind_rows(beta_results_by_year)
+  
+  # Testing Period: Calculate returns for each portfolio
+  testing_period_data <- capm_data %>%
+    filter(month >= as.Date(testing_start) & month <= as.Date(testing_end))
+  
+  permno_by_portfolio <- beta_results_sorted %>%
+    select(permno, portfolio)
+  
+  testing_period_data <- testing_period_data %>%
+    inner_join(permno_by_portfolio, by = "permno")
+  
+  # Calculate average returns by portfolio
+  average_by_portfolio_month <- testing_period_data %>%
+    group_by(portfolio, month) %>%
+    summarize(avg_ret = mean(raw_ret, na.rm = TRUE), avg_mkt = mean(raw_mkt, na.rm = TRUE)) %>%
+    ungroup()
+  
+  # Calculate R-squared values
+  r_squared_by_portfolio <- average_by_portfolio_month %>%
+    group_by(portfolio) %>%
+    do({
+      model <- lm(avg_ret ~ avg_mkt, data = .)
+      r_squared <- summary(model)$r.squared
+      data.frame(r_squared = r_squared)
+    }) %>%
+    ungroup()
+  
+  # Calculate standard deviation of returns
+  stddev_by_portfolio <- average_by_portfolio_month %>%
+    group_by(portfolio) %>%
+    summarise(stddev_avg_ret = sd(avg_ret, na.rm = TRUE)) %>%
+    ungroup()
+  
+  # Calculate the final table merging all information
+  final_table <- stddev_by_portfolio %>%
+    inner_join(r_squared_by_portfolio, by = "portfolio") %>%
+    inner_join(beta_results_combined, by = "portfolio")
+  
+  return(final_table)
+}
+
+# Example Usage:
+# Define periods from Table 1
+periods <- list(
+  list(portfolio_start = "1926-01-01", portfolio_end = "1929-12-31", estimation_end = "1934-12-31", testing_start = "1935-01-01", testing_end = "1938-12-31"),
+  list(portfolio_start = "1927-01-01", portfolio_end = "1933-12-31", estimation_end = "1938-12-31", testing_start = "1939-01-01", testing_end = "1942-12-31")
+)
+
+# Loop through each period and calculate results
+results <- lapply(periods, function(period) {
+  run_fama_macbeth_analysis(capm_data, period$portfolio_start, period$portfolio_end, period$estimation_end, period$testing_start, period$testing_end)
+})
+
+
