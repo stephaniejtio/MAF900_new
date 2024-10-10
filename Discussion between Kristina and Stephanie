@@ -108,3 +108,14 @@ calculate portfolio returns for the next period, save the results in each of the
 6. Feel free to give any inputs and let me know if you have any questions 
 Thank you!
 
+kristina (20241008)
+Hey Stepahnie. Please see below: 
+1. I deleted and modified some codes which i found it not to be very necessary. You can go through and see if anything you would like to keep. 
+2. Our logic now become, first use 1926-1929, 1930-1934, 1935-1938 as a example to calculate the statistics. Then, creating a function to run other periods. And check if the function results are same as that we got from the begining example. 
+3. Now, i found, after comparing the dataset of table 2 and results, they are consistent.
+4. We can list all other periods until 2022 to get the results. 
+5. And now i try to discipline our codes' style. When we write code, we provide an explanation for the code (which we do very well). Explanations can be written in lowercase (this saves time). Let us keep them as consistency. I already modified your part and my part up to now, pls check and use the same style in the future. 
+6. I did new things to use all periods to calculate the statistics in Table 2 (dataset is results). And i output a xlsx file called TABLE 2. Please have a look. If you have a better method, please modify. 
+7. Now, you can work on Table 3 Panel A. If you have any questions when you do this, let me know, we can orgaize a call. My plan is to finish all panels in Table 2 by Saturday night, and we will do Table 4 during sunday. Next week, begin to correct errors we made and write the report. 
+
+
