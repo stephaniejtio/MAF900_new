@@ -119,3 +119,23 @@ Hey Stepahnie. Please see below:
 7. Now, you can work on Table 3 Panel A. If you have any questions when you do this, let me know, we can orgaize a call. My plan is to finish all panels in Table 2 by Saturday night, and we will do Table 4 during sunday. Next week, begin to correct errors we made and write the report. 
 
 
+
+Stephanie (223935051)
+Hi Kristina, thank you for the updates
+1. I have reviewed the code you updated and will continue the code to replicate Table 3 (I have updated and pushed the code to git)
+2. Table 3: Summary results for the regression based on the formula 
+3. I start on Panel A period 1935 - 1968 with the first 3 gama(s)
+4. The approach is by calculating beta p, which is the slope of beta and create function, which is the function to calculate Fama-MacBeth coefficients
+5. Calculate the time-series regression of portfolio returns (Rp) on factors (beta_p, beta_p^2, residual risk)
+6. Calculate the cross-sectional averages, and the function will return gama1, gama2, and gama3 based on the paper 
+Please let me know if you have any questions and feel free to give any input.
+7. I have noted your suggestion to explain the codes with the comments on R studio, I think so far our codes are well commented on and explained,
+my suggestion, we need (mandatory) provide explanations and comments on major parts of the codes, additionally we should review top to bottom to finalize and ensuring consistency of our code script before the submission 
+8. We can have synced up calls during the weekend 
+(I have free up my weekend to focus on assignments so, I'm free on Saturday and Sunday at any time), let me know what time suits the best for you)
+Thank you! 
+
+
+
+
+
