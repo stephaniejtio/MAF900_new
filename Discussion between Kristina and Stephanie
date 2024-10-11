@@ -136,6 +136,13 @@ my suggestion, we need (mandatory) provide explanations and comments on major pa
 Thank you! 
 
 
+Kristina (20241011)
+Hey,
+1. I saw that u used avg_return to calculate the beta p. But, i think it is not accurate. From the page 617-618, the author explains the meaning of Table 3's statistics. In 618, the last paragraph, he said now using Beta p to simplify the notation. So, we probably still need to follow the equation 10. Using the rolling method we just applied for Table 2 to assign beta value to each portfolio in each month of each year. 
+2. I modified our codes to meet the data requirement in page 617, this will help us generate the Table 1. see row 84 to row 102. 
+3. I guess we need to only use the data meeting requirement to form portfolio, calculate statistics, etc. I already mondified both your and my parts. You can go through all codes and the functions to understand it. 
+3. And When you do table 3, you need to follow the data requirement, too. 
+
 
 
 
