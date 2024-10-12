@@ -685,12 +685,39 @@ write.xlsx(combined_results, "TABLE 2.xlsx")
 #calculate gama0, as the intercept 
 #gama1 betap, Beta Coefficient for Market Risk
 
+
+### Collect FF 3 factor data ####
+temp <- tempfile(fileext = ".zip")
+download.file("http://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_CSV.zip", temp)
+temp1 <- unzip(temp, exdir = ".")
+ff_3factors_monthly <- read_csv(temp1, skip = 5) 
+names(ff_3factors_monthly) <- c('dt', 'rmrf', 'smb', 'hml', 'rf')
+unlink(temp)
+unlink(temp1)
+
+### Create date variable, filter the data for the sample period, convert chr data to numeric ###
+ff_3factors_mon <- ff_3factors_monthly |> 
+  filter(nchar(dt) == 6) |> 
+  mutate(yr = str_sub(dt, 1, 4), mon = str_sub(dt, -2, -1),  
+         date = make_date(year = yr, month = mon, day = 01), 
+         mkt_excess = as.numeric(rmrf), smb = as.numeric(smb),
+         hml = as.numeric(hml), rf = as.numeric(rf)) |> 
+  filter(date >= '1935-01-01' & date <= '1968-12-31') |> 
+  select(c('date', 'mkt_excess', 'smb', 'hml', 'rf'))
+
 #calculate BETA for period 1935-1968 (table 3)
 capm_data4 <- capm_data %>%
-  filter(month >= as.Date("1935-01-01") & month <= as.Date("1968-12-31")) 
+  filter(month >= as.Date("1935-01-01") & month <= as.Date("1968-12-31")) %>%
+  inner_join(count_valid_permno, by = "permno") %>%
+  left_join(ff_3factors_mon, by = c("month" = "date")) # merging FF data with CAPM data
 
-capm_data4<- capm_data4 %>%
-  inner_join(count_valid_permno, by = "permno")
+capm_data4 <- capm_data4 %>%
+  mutate(excess_ret = raw_ret - rf)
+
+
+
+
+
 
 #compute the regression model for each permno and extract the standard deviations of residuals
 beta_results4 <- capm_data4 %>%
@@ -713,17 +740,17 @@ beta_results_only4 <- beta_results_only4 %>%
 
 #calculate the portfolio return during 1935-1968
 #set a new dataset for period 1935-1968
-capm_data4 <- capm_data %>%
-  filter(month >= as.Date("1935-01-01") & month <= as.Date("1968-12-31"))
-capm_data4<- capm_data4 %>%
-  inner_join(count_valid_permno, by = "permno")
+#capm_data4 <- capm_data %>%
+#  filter(month >= as.Date("1935-01-01") & month <= as.Date("1968-12-31"))
+#capm_data4<- capm_data4 %>%
+ # inner_join(count_valid_permno, by = "permno")
 
 
 #portfolio
 capm_data4<- capm_data4 %>%
   inner_join(beta_results_only %>% select(permno, portfolio), by = "permno")
 
-#join beta_results_only2 with portfolio number
+#join beta_results_only4 with portfolio number
 beta_results_only4 <- beta_results_only4 %>%
   inner_join(beta_results_only %>% select(permno, portfolio), by = "permno")
 
@@ -733,8 +760,19 @@ beta_results_only4 <- beta_results_only4 %>%
 
 #####Next step
 #Calculate the average return (avg_ret) by portfoliio and month 
-avg_returns_table3 <- capm_data4 %>%
-  inner_join(beta_results_only4 %>% select(permno, beta, portfolio), by = "permno") %>%
+#avg_returns_table3 <- capm_data4 %>%
+#  left_join(beta_results_only4 %>% select(permno, beta, portfolio), by = "permno") %>%
+#  group_by(portfolio, month) %>%
+#  summarize(avg_ret = mean(raw_ret, na.rm = TRUE), avg_mkt = mean(raw_mkt, na.rm = TRUE)) %>%
+#  ungroup()
+
+joinData <- capm_data4 %>%
+  inner_join(beta_results_only4 %>% select(permno, portfolio), by = "permno") %>%
+  select(-portfolio.y)
+joinData <- joinData %>%
+  rename(portfolio = portfolio.x)
+
+avg_returns_table3 <- joinData %>%
   group_by(portfolio, month) %>%
   summarize(avg_ret = mean(raw_ret, na.rm = TRUE), avg_mkt = mean(raw_mkt, na.rm = TRUE)) %>%
   ungroup()
@@ -755,14 +793,14 @@ avg_returns_table3 <- avg_returns_table3 %>%
   inner_join(portfolio_betas_table3, by = "portfolio")
 
 
-#fama macbeth regression to compute gamma coefficients (gamma0)
+#Fama macbeth regression to compute gamma coefficients (gamma0)
 calculate_fama_macbeth_table3 <- function(data) {
   #  cross-sectional regressions of avg_ret on beta_p (this will give us gamma0)
   regressions <- data %>%
     group_by(month) %>%
     do({
       model <- lm(avg_ret ~ beta_p, data = .)
-      tidy(model)  # regression results
+      tidy(model) 
     })
   
   #average of the coefficients (this will give gamma0)
@@ -781,6 +819,12 @@ gamma_results_table3 <- calculate_fama_macbeth_table3(avg_returns_table3)
 
 # return intercpet (gamma0 γ₀) and beta_p (gamma1 γ₁)
 print(gamma_results_table3)
+
+
+
+
+
+
 
 
 
