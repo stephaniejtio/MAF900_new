@@ -675,102 +675,121 @@ write.xlsx(combined_results, "TABLE 2.xlsx")
 #finish by Kristina
 
 
+
+
+
+
+
 #TABLE 3
 #portfolio return 
 #calculate gama0, as the intercept 
 #gama1 betap, Beta Coefficient for Market Risk
 
+#calculate BETA for period 1935-1968 (table 3)
+capm_data4 <- capm_data %>%
+  filter(month >= as.Date("1935-01-01") & month <= as.Date("1968-12-31")) 
 
+capm_data4<- capm_data4 %>%
+  inner_join(count_valid_permno, by = "permno")
 
-
-#filter data for the period
-filtered_data <- average_by_portfolio_month3 %>%
-  filter(month >= as.Date("1935-01-01") & month <= as.Date("1968-06-30"))
-
-
-# average_by_portfolio_month3 to obtain the average returns and market data
-# and add the residuals and variance
-
-# regression for each portfolio to get the residuals
-portfolio_residuals <- filtered_data %>%
-  group_by(portfolio) %>%
+#compute the regression model for each permno and extract the standard deviations of residuals
+beta_results4 <- capm_data4 %>%
+  group_by(permno) %>%
   do({
-    model <- lm(avg_ret ~ avg_mkt, data = .)
-    residuals <- resid(model)
-    data.frame(month = .$month, residuals = residuals)
+    m1 <- lm(raw_ret ~ raw_mkt, data = .)
+    residuals <- resid(m1)  
+    idsr <- sd(residuals) 
+    tidy(m1)%>%
+      mutate(idsr = idsr)
   })
 
+beta_results_only4 <- beta_results4 %>%
+  filter(term == "raw_mkt") %>%
+  select(permno, beta = estimate, std_error = std.error, t_statistic = statistic, p_value = p.value, idsr = idsr)
 
-# calculate the variance of residuals for each portfolio
-residuals_var_by_portfolio <- portfolio_residuals %>%
-  group_by(portfolio) %>%
-  summarise(residuals_var = var(residuals, na.rm = TRUE))
+#remove for NA beta
+beta_results_only4 <- beta_results_only4 %>%
+  filter(!is.na(beta))
+
+#calculate the portfolio return during 1935-1968
+#set a new dataset for period 1935-1968
+capm_data4 <- capm_data %>%
+  filter(month >= as.Date("1935-01-01") & month <= as.Date("1968-12-31"))
+capm_data4<- capm_data4 %>%
+  inner_join(count_valid_permno, by = "permno")
 
 
-# calculate beta for each portfolio
-# use the average returns (avg_ret) and market returns (avg_mkt) for each portfolio.
+#portfolio
+capm_data4<- capm_data4 %>%
+  inner_join(beta_results_only %>% select(permno, portfolio), by = "permno")
 
-beta_by_portfolio <- filtered_data %>%
+#join beta_results_only2 with portfolio number
+beta_results_only4 <- beta_results_only4 %>%
+  inner_join(beta_results_only %>% select(permno, portfolio), by = "permno")
+
+
+
+
+
+#####Next step
+#Calculate the average return (avg_ret) by portfoliio and month 
+avg_returns_table3 <- capm_data4 %>%
+  inner_join(beta_results_only4 %>% select(permno, beta, portfolio), by = "permno") %>%
+  group_by(portfolio, month) %>%
+  summarize(avg_ret = mean(raw_ret, na.rm = TRUE), avg_mkt = mean(raw_mkt, na.rm = TRUE)) %>%
+  ungroup()
+
+
+#Calculate the portoflio beta (Bp)
+# run regression to compute beta p (portfolio beta), the slope coeficient 
+portfolio_betas_table3 <- avg_returns_table3 %>%
   group_by(portfolio) %>%
   do({
     model <- lm(avg_ret ~ avg_mkt, data = .)
-    beta_p <- coef(model)[2]  # slope (beta)
+    beta_p <- coef(model)[2]  # beta is the slope coefficient
     data.frame(portfolio = .$portfolio[1], beta_p = beta_p)
   })
 
+# Merge portfolio betas with avg_returns_table3
+avg_returns_table3 <- avg_returns_table3 %>%
+  inner_join(portfolio_betas_table3, by = "portfolio")
 
 
-# merge 
-filtered_data <- filtered_data %>%
-  inner_join(beta_by_portfolio, by = "portfolio")
-
-
-
-# merge the residual variance into the main dataset and calculate beta_p_sq
-prepared_data <- filtered_data %>%
-  inner_join(residuals_var_by_portfolio, by = "portfolio") %>%
-  mutate(beta_p_sq = beta_p^2)  # the square of the beta
-
-
-
-
-
-
-
-
-
-
-
-# function to calculate Fama-MacBeth coefficients
-calculate_fama_macbeth_coefficients <- function(data) {
-  # time-series regression of portfolio returns (Rp) on factors (beta_p, beta_p^2, residual risk)
+#fama macbeth regression to compute gamma coefficients (gamma0)
+calculate_fama_macbeth_table3 <- function(data) {
+  #  cross-sectional regressions of avg_ret on beta_p (this will give us gamma0)
   regressions <- data %>%
     group_by(month) %>%
     do({
-      model <- lm(avg_ret ~ beta_p + I(beta_p^2) + residuals_var, data = .)
-      tidy(model)
+      model <- lm(avg_ret ~ beta_p, data = .)
+      tidy(model)  # regression results
     })
   
-  # calculate the average of the coefficients 
-  #(cross-sectional averages)
+  #average of the coefficients (this will give gamma0)
   gamma_coefficients <- regressions %>%
     group_by(term) %>%
     summarise(
       gamma_mean = mean(estimate, na.rm = TRUE),
-      gamma_std_error = sd(estimate, na.rm = TRUE) / sqrt(n())
+      gamma_std_error = sd(estimate, na.rm = TRUE) / sqrt(n())  
     )
   
   return(gamma_coefficients)
 }
 
-# use prepared_data for regressions
-# prepared_data should have columns: avg_ret (portfolio return), beta_p (portfolio beta), beta_p_sq (beta squared), residuals_var (variance of residuals)
+# Run the Fama-MacBeth regression and get gamma 0 (beta_p)
+gamma_results_table3 <- calculate_fama_macbeth_table3(avg_returns_table3)
 
-# Run Fama-MacBeth regression to compute gamma coefficients for the period 1935 to June 1968
-gamma_results <- calculate_fama_macbeth_coefficients(prepared_data)
+# return intercpet (gamma0 γ₀) and beta_p (gamma1 γ₁)
+print(gamma_results_table3)
 
-# Print the gamma coefficients (gamma0, gamma1, gamma2, gamma3)
-#print(gamma_results)
+
+
+
+
+
+
+
+
 
 
 
