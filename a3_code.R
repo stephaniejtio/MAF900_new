@@ -705,9 +705,9 @@ ff_3factors_mon <- ff_3factors_monthly |>
   filter(date >= '1935-01-01' & date <= '1968-12-31') |> 
   select(c('date', 'mkt_excess', 'smb', 'hml', 'rf'))
 
-#calculate BETA for period 1935-1968 (table 3)
+#calculate BETA for period 1935-2022 (table 3)
 capm_data4 <- capm_data %>%
-  filter(month >= as.Date("1935-01-01") & month <= as.Date("1968-12-31")) %>%
+  filter(month >= as.Date("1935-01-01") & month <= as.Date("2022-12-31")) %>%
   inner_join(count_valid_permno, by = "permno") %>%
   left_join(ff_3factors_mon, by = c("month" = "date")) # merging FF data with CAPM data
 
@@ -829,6 +829,123 @@ print(gamma_results_table3)
 
 
 
+# Table 3 Updated Version 
+calculate_gamma_table3_with_yearly_update <- function(capm_data, ff_factors_data, portfolio_start, portfolio_end, estimation_start, estimation_end, 
+                                                      estimation_end1, estimation_end2, estimation_end3, testing_start, testing_end) {
+  
+  # Identify the permnos available in the first testing month
+  permno_first_month <- capm_data %>%
+    filter(month >= as.Date(testing_start)) %>%
+    select(permno) %>%
+    distinct() %>%
+    pull(permno)
+  
+  # Filter permnos for valid periods and data requirements
+  count_valid_permno <- capm_data %>%
+    filter(month >= as.Date(portfolio_start) & month <= as.Date(estimation_end)) %>%
+    filter(permno %in% permno_first_month) %>%
+    group_by(permno) %>%
+    summarise(
+      months_count = sum(month >= as.Date(estimation_start) & month <= as.Date(estimation_end)),
+      years_count = n_distinct(format(month[month >= as.Date(portfolio_start) & month <= as.Date(portfolio_end)], "%Y"))
+    ) %>%
+    filter(months_count == 60 & years_count >= 4)
+  
+  #Assign portfolios based on ranked betas
+  portfolio_data <- capm_data %>%
+    filter(month >= as.Date(portfolio_start) & month <= as.Date(portfolio_end)) %>%
+    inner_join(count_valid_permno, by = "permno")
+  
+  beta_results <- portfolio_data %>%
+    group_by(permno) %>%
+    do(tidy(lm(raw_ret ~ raw_mkt, data = .)))
+  
+  # Filter beta results and assign portfolios
+  beta_results_only <- beta_results %>%
+    filter(term == "raw_mkt") %>%
+    select(permno, beta = estimate, std_error = std.error) %>%
+    filter(!is.na(beta))
+  
+  # Assign portfolios based on ranked betas
+  N <- nrow(beta_results_only)
+  securities_per_portfolio <- floor(N / 20)
+  beta_results_only$portfolio <- rep(1:20, each = securities_per_portfolio, length.out = N)
+  
+  # Update yearly and calculate portfolio beta and standard errors for estimation periods
+  update_yearly_betas <- function(estimation_start, estimation_end) {
+    capm_data %>%
+      filter(month >= as.Date(estimation_start) & month <= as.Date(estimation_end)) %>%
+      inner_join(count_valid_permno, by = "permno") %>%
+      group_by(permno) %>%
+      do({
+        m1 <- lm(raw_ret ~ raw_mkt, data = .)
+        tidy(m1) %>%
+          filter(term == "raw_mkt") %>%
+          select(beta = estimate, std_error = std.error)
+      }) %>%
+      inner_join(beta_results_only %>% select(permno, portfolio), by = "permno") %>%
+      group_by(portfolio) %>%
+      summarise(mean_beta = mean(beta, na.rm = TRUE), mean_std_beta = mean(std_error, na.rm = TRUE))
+  }
+  
+  # calculate betas by updating one year at a time
+  beta_means_by_portfolio <- update_yearly_betas(estimation_start, estimation_end)
+  beta_means_by_portfolio <- beta_means_by_portfolio %>%
+    inner_join(update_yearly_betas(estimation_start, estimation_end1), by = "portfolio") %>%
+    inner_join(update_yearly_betas(estimation_start, estimation_end2), by = "portfolio") %>%
+    inner_join(update_yearly_betas(estimation_start, estimation_end3), by = "portfolio") %>%
+    group_by(portfolio) %>%
+    summarise(mean_beta_avg = mean(c(mean_beta.x, mean_beta.y, mean_beta, na.rm = TRUE)), 
+              mean_std_beta_avg = mean(c(mean_std_beta.x, mean_std_beta.y, mean_std_beta, na.rm = TRUE)))
+  
+  # Calculate average returns by portfolio and month
+  avg_returns_by_portfolio <- capm_data %>%
+    filter(month >= as.Date(testing_start) & month <= as.Date(testing_end)) %>%
+    inner_join(count_valid_permno, by = "permno") %>%
+    inner_join(beta_results_only %>% select(permno, portfolio), by = "permno") %>%
+    group_by(portfolio, month) %>%
+    summarise(avg_ret = mean(raw_ret, na.rm = TRUE), avg_mkt = mean(raw_mkt, na.rm = TRUE)) %>%
+    ungroup()
+  
+  # Calculate gamma0 and gamma1 using Fama-MacBeth regression (cross-sectional regression)
+  regressions <- avg_returns_by_portfolio %>%
+    group_by(month) %>%
+    do({
+      model <- lm(avg_ret ~ mean_beta_avg, data = .)
+      tidy(model)
+    })
+  
+  # average of the coefficients (gamma0 and gamma1)
+  gamma_coefficients <- regressions %>%
+    group_by(term) %>%
+    summarise(
+      gamma_mean = mean(estimate, na.rm = TRUE),
+      gamma_std_error = sd(estimate, na.rm = TRUE) / sqrt(n())
+    )
+  
+  #gamma0 and gamma1
+  gamma0 <- gamma_coefficients %>% filter(term == "(Intercept)") %>% pull(gamma_mean)
+  gamma1 <- gamma_coefficients %>% filter(term == "mean_beta_avg") %>% pull(gamma_mean)
+  
+  #Calculate gamma0 - rf
+  rf_mean <- mean(ff_factors_data$rf, na.rm = TRUE)
+  gamma0_minus_rf <- gamma0 - rf_mean
+  
+  # Return gamma values (gamma0, gamma1, gamma0 - rf)
+  return(data.frame(gamma0 = gamma0, gamma1 = gamma1, gamma0_minus_rf = gamma0_minus_rf))
+}
+
+# function call for Table 3
+#will be modified based in period in table 3
+gamma_results_table3 <- calculate_gamma_table3_with_yearly_update(capm_data4, ff_3factors_mon, 
+                                                                  "1935-01-01", "1936-12-31", 
+                                                                  "1937-01-01", "1967-12-31", 
+                                                                  "1968-12-31", "1969-12-31", 
+                                                                  "1970-12-31", "1971-12-31", 
+                                                                  "1972-12-31")
+
+# Print gamma0, gamma1, and gamma0 - Rf results
+print(gamma_results_table3)
 
 
 
