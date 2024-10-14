@@ -147,4 +147,9 @@ Hey,
 
 Stephanie (223935051)
 1. Updated table 3 for the first period (gamma 0 and gamma1)
-2. with avg_ret to calculate Intercept, and Beta_p
+2. with avg_ret to calculate Intercept and Beta_p
+
+1. I have created a function for Table 3, based on the discussion call we had.
+2. Please kindly check, feel free to modify and let me know if you have any comments 
+thank you :)
+
