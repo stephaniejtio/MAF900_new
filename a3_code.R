@@ -1220,7 +1220,6 @@ t3_panela <- do.call(rbind, lapply(panela, as.data.frame))
 
 
 
-
 # Table 3 Panel B
 # Panel B have more complexity by using an additional squared term for beta (β²) in the regression
 
@@ -1741,9 +1740,6 @@ panelB <- lapply(combined_periods, function(combined_periods) {
 t3_panelB <- do.call(rbind, lapply(panelB, as.data.frame))
 
 # Finished by Stephanie 
-
-
-
 
 
 
