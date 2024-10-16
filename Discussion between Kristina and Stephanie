@@ -167,4 +167,11 @@ hey Kristina
 please kindly review and let me know if you have any inputs 
 Thank you 
 
-
+Kristina (20241016)
+Hey, I already checked. 
+1. You dont need to rerun the calculate_gamma_with_table3_yearly_update function, as this is only the function to integrate all betas we calculated together into a table, and then we can use it in Table3. 
+2. In panel b, some places forgot to add beta_square, which u need to be careful (in regression dataframe, regression_summary, and you also need to add the correlation of gamma2, you need create regression_summary3 to collect the relevant statistics of gamma3, and then integate to regression_summary, t statistics of gamma2)
+3. I already helped u modify your codes. But again, u need to review my codes carefully and try understand, then you will not forget any inputs. 
+4. After writing the codes, it is better to run it again to see if we get the correct results. You can use a period to check. 
+5. I also added sd of residuals in calculate_gamma_with_table3_yearly_update function, you can directly use for your panel c. 
+6. I done panel d. you can add your panel c in the middle of b and d. 
