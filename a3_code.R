@@ -436,7 +436,7 @@ run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end,
   
   beta_results_only$portfolio <- rep(1:20, times = portfolio_sizes)
   
-  #initial Estimation Period: Calculate BETA year by year
+  #initial Estimation Period: calculate BETA year by year
   estimation_period_data <- capm_data %>%
     filter(month >= as.Date(estimation_start) & month <= as.Date(estimation_end))
   estimation_period_data<- estimation_period_data %>%
@@ -617,7 +617,10 @@ run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end,
     inner_join(stddev_residuals_by_portfolio3, by = "portfolio")%>%
     mutate(count_first_month = count_first_month,
            count_in_all_months = count_in_all_months,
-           ratio = stddev_residuals / mean_idsr_avg)
+           ratio = stddev_residuals / mean_idsr_avg,
+           date1 = as.Date(portfolio_start),
+           date2 = as.Date(estimation_start),
+           date3 = as.Date(testing_start))
   
   return(final_table)
 }
@@ -685,10 +688,129 @@ results <- lapply(combined_periods, function(combined_periods) {
 #combine results into a data frame
 combined_results <- do.call(rbind, lapply(results, as.data.frame))
 
-#install.packages("openxlsx")
-library(openxlsx)
-#create an Excel file
-write.xlsx(combined_results, "TABLE 2.xlsx")
+#create table 1
+table1 <- combined_results %>%
+  filter(portfolio == 1) %>%
+  mutate(
+    date1 = as.Date(date1, format = "%Y-%m-%d"),
+    date2 = as.Date(date2, format = "%Y-%m-%d"),
+    date3 = as.Date(date3, format = "%Y-%m-%d"), #make sure the format of date
+    `Portfolio formation period` = year(date1),
+    `Initial estimation period` = year(date2),
+    `Testing period` = year(date3),  #finding the year
+    `No. of securities available` = count_first_month,  
+    `No. of securities meeting data requirement` = count_in_all_months  
+    ) %>%
+  select(
+    `Portfolio formation period`,
+    `Initial estimation period`,
+    `Testing period`,
+    `No. of securities available`,
+    `No. of securities meeting data requirement`
+  ) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "Variable",
+    values_to = "Value"
+  ) %>%
+  group_by(Variable) %>%
+  summarise(Value = list(Value)) %>%
+  unnest_wider(Value, names_sep = "_") %>%
+  mutate(Variable = factor(Variable, levels = c(
+    "Portfolio formation period",
+    "Initial estimation period",
+    "Testing period",
+    "No. of securities available",
+    "No. of securities meeting data requirement"
+  ))) %>%
+  arrange(Variable)
+
+colnames(table1)[-1] <- paste0("Period", 1:(ncol(table1) - 1))
+
+#output table1
+write.xlsx(table1, "table1.xlsx", rowNames = FALSE)
+
+#organizing table2
+table2 <- combined_results %>%
+  filter(date3 == "1935-01-01" 
+         | date3 == "1943-01-01"
+         | date3 == "1951-01-01"
+         | date3 == "1959-01-01"
+         | date3 == "1967-01-01"
+         | date3 == "1975-01-01"
+         | date3 == "1983-01-01"
+         | date3 == "1991-01-01"
+         | date3 == "1999-01-01"
+         | date3 == "2007-01-01"
+         | date3 == "2015-01-01") %>%
+  mutate(
+    date1 = as.Date(date1, format = "%Y-%m-%d"),
+    date2 = as.Date(date2, format = "%Y-%m-%d"),
+    date3 = as.Date(date3, format = "%Y-%m-%d"), #make sure the format of date
+    `Portfolio` = as.integer(portfolio),
+    `Portfolio for Estimation period` = as.integer(year(date3)-1),
+    `Beta_p,t-1` = mean_beta_avg,  
+    `s(Beta_p,t-1)` = mean_std_beta_avg,
+    `r(Rp, Rm)^2` = r_squared,
+    `s(Rp)` = stddev_avg_ret,
+    `s(Epsilon_p)` = mean_idsr_avg,
+    `s_p,t-1(Epsilon_i)` = stddev_residuals,
+    `s(Epsilon_p)/s_p,t-1(Epsilon_i)` = ratio
+  ) %>%
+  select(
+    `Portfolio`,
+    `Portfolio for Estimation period`,
+    `Beta_p,t-1`,  
+    `s(Beta_p,t-1)`,
+    `r(Rp, Rm)^2`,
+    `s(Rp)`,
+    `s(Epsilon_p)`,
+    `s_p,t-1(Epsilon_i)`,
+    `s(Epsilon_p)/s_p,t-1(Epsilon_i)`
+  ) %>% 
+  mutate(across(-c(Portfolio, `Portfolio for Estimation period`), 
+                ~ round(., 3)))
+
+#spliting table2 into different periods
+tables_split <- split(table2, table2$`Portfolio for Estimation period`)
+for (value in names(tables_split)) {
+  assign(paste0("table2_", value), tables_split[[value]])
+}
+
+tables <- list(table2_1934, table2_1942, table2_1950, table2_1958, table2_1966,table2_1974,
+               table2_1982,table2_1990,table2_1998,table2_2006,table2_2014)
+
+#integrating together
+tables_processed <- lapply(tables, function(df) {
+  df %>% 
+    select(-Portfolio) %>%
+    pivot_longer(
+      cols = everything(),
+      names_to = "Variable",
+      values_to = "Value"
+    ) %>%
+    group_by(Variable) %>%
+    summarise(Value = list(Value)) %>%
+    unnest_wider(Value, names_sep = "_") %>%
+    mutate(Variable = factor(Variable, levels = c(
+      "Portfolio for Estimation period",
+      "Beta_p,t-1",
+      "s(Beta_p,t-1)",
+      "r(Rp, Rm)^2",
+      "s(Rp)",
+      "s(Epsilon_p)",
+      "s_p,t-1(Epsilon_i)",
+      "s(Epsilon_p)/s_p,t-1(Epsilon_i)"
+    ))) %>%
+    arrange(Variable) %>%
+    rename(Statistic = Variable) %>%
+    rename_with(~ paste0("Portfolio", seq_along(.)), starts_with("Value_"))
+})
+
+table2_combined <- bind_rows(tables_processed)
+
+#outputing table2
+write.xlsx(table2_combined, "table2.xlsx", rowNames = FALSE)
 
 #finish by Kristina
 
@@ -1054,8 +1176,8 @@ table3_panela_function <- function(combined_results, start, end) {
     summarise(       
       gamma0 = mean(estimate[term == "(Intercept)"], na.rm = TRUE),       
       gamma1 = mean(estimate[term == "mean_beta"], na.rm = TRUE),       
-      s_gama0 = mean(std.error[term == "(Intercept)"], na.rm = TRUE),       
-      s_gama1 = mean(std.error[term == "mean_beta"], na.rm = TRUE),
+      s_gamma0 = mean(std.error[term == "(Intercept)"], na.rm = TRUE),       
+      s_gamma1 = mean(std.error[term == "mean_beta"], na.rm = TRUE),
       .groups = 'drop'     )
   
   adjusted_r2 <- combined_results %>%
@@ -1220,7 +1342,9 @@ combined_periods <- c(list(custom_periods1), list(custom_periods2), periods1, li
 
 #loop through each period and calculate results
 panela <- lapply(combined_periods, function(combined_periods) {
-  table3_panela_function(combined_results, combined_periods$start, combined_periods$end)
+  result <- table3_panela_function(combined_results, combined_periods$start, combined_periods$end)
+  result$Period <- paste(combined_periods$start, "to", combined_periods$end)
+  return(result)
 })
 
 #combine results into a data frame
@@ -1228,23 +1352,6 @@ t3_panela <- do.call(rbind, lapply(panela, as.data.frame))
 
 #finish by kristina
 
-
-
-
-
-
-
-# Table 3 Panel B
-# Panel B have more complexity by using an additional squared term for beta (β²) in the regression
-
-# Function to calculate gamma for Table 3 Panel B
-# Differences from Panel A: include BETA SQUARED term in the regression 
-# Start by Stephanie 
-
-calculate_gamma_table3_with_yearly_PanelB <- function(capm_data, portfolio_start, portfolio_end, estimation_start, estimation_end, 
-                                                      estimation_end1, estimation_end2, estimation_end3, testing_start, testing_start1, testing_end, 
-                                                      testing_start_m1, testing_start_m2, testing_start_m3, testing_start_m4, testing_end_m1, 
-                                                      testing_end_m2, testing_end_m3, testing_end_m4) 
 
 #start by Stephanie, improved by Kristina
 #Table 3 Panel B
@@ -1461,7 +1568,9 @@ combined_periods <- c(list(custom_periods1), list(custom_periods2), periods1, li
 
 #loop through each period and calculate results
 panelb <- lapply(combined_periods, function(combined_periods) {
-  table3_panelb_function(combined_results, combined_periods$start, combined_periods$end)
+  result <- table3_panelb_function(combined_results, combined_periods$start, combined_periods$end)
+  result$Period <- paste(combined_periods$start, "to", combined_periods$end)
+  return(result)
 })
 
 #combine results into a data frame
@@ -1472,19 +1581,17 @@ t3_panelb <- do.call(rbind, lapply(panelb, as.data.frame))
 
 #finished by Stephanie, improved by Kristina
 
+#Table 3 PANEL C
+#start by Stephanie 
 
+#panel C includes gamma3 (mean residual sd)
+#panel C get estimates gamma0, gamma1, gamma3 (residual risk), without quadratic term for this panel
+#based on the Fama paper 
 
-# Table 3 PANEL C
-# Start by Stephanie 
-
-# Panel C includes gamma3 (mean residual sd)
-# Panel C get estimates gamma0, gamma1, gamma3 (residual risk), without quadratic term for this panel
-# based on the Fama paper 
-
-# gamma3 corresponds to the residual variance (idiosyncratic risk)
+#gamma3 corresponds to the residual variance (idiosyncratic risk)
 table3_panelc_function <- function(combined_results, start, end) {
   
-  # Calculate gamma0, gamma1, and gamma3 using Fama-MacBeth regression (cross-sectional regression)
+  #calculate gamma0, gamma1, and gamma3 using Fama-MacBeth regression (cross-sectional regression)
   table3 <- combined_results %>%
     filter(month >= as.Date(start) & month <= as.Date(end)) %>%
     group_by(month) %>%
@@ -1646,9 +1753,7 @@ table3_panelc_function <- function(combined_results, start, end) {
 }
 
 
-
-
-#Panel C
+#panel C
 periods1 <- list()
 
 #Define the start and end year
@@ -1694,23 +1799,14 @@ combined_periods <- c(list(custom_periods1), list(custom_periods2), periods1, li
 
 #loop through each period and calculate results
 panelc <- lapply(combined_periods, function(combined_periods) {
-  table3_panelc_function(combined_results, combined_periods$start, combined_periods$end)
+  result <- table3_panelc_function(combined_results, combined_periods$start, combined_periods$end)
+  result$Period <- paste(combined_periods$start, "to", combined_periods$end)
+  return(result)
 })
 
 #combine results into a data frame
 t3_panelc <- do.call(rbind, lapply(panelc, as.data.frame))
-
-
-
-
-
-
-
-
-
-
-
-
+#finish by Stephanie
 
 #start by Kristina
 #panel d begins
@@ -1951,11 +2047,74 @@ combined_periods <- c(list(custom_periods1), list(custom_periods2), periods1, li
 
 #loop through each period and calculate results
 paneld <- lapply(combined_periods, function(combined_periods) {
-  table3_paneld_function(combined_results, combined_periods$start, combined_periods$end)
+  result <- table3_paneld_function(combined_results, combined_periods$start, combined_periods$end)
+  result$Period <- paste(combined_periods$start, "to", combined_periods$end)
+  return(result)
 })
+
 
 #combine results into a data frame
 t3_paneld <- do.call(rbind, lapply(paneld, as.data.frame))
 
+#distinguish each panel
+t3_panela <- t3_panela %>% mutate(panel = "panel_a")
+t3_panelb <- t3_panelb %>% mutate(panel = "panel_b")
+t3_panelc <- t3_panelc %>% mutate(panel = "panel_c")
+t3_paneld <- t3_paneld %>% mutate(panel = "panel_d")
 
+#integrating all four panels together
+combined_table3 <- bind_rows(t3_panela, t3_panelb, t3_panelc, t3_paneld)
 
+#rearrange the order of the columns of combined_table3
+combined_table3 <- combined_table3 %>%
+  select(
+    panel,
+    Period,
+    gamma0,
+    gamma1,
+    gamma2,
+    gamma3,
+    mean_gama0_minus_rf,
+    s_gamma0,
+    s_gamma1,
+    s_gamma2,
+    s_gamma3,
+    corr0_gamma0_minus_rf,
+    corr_m1,
+    corr0_2,
+    corr0_3,
+    t_gamma0,
+    t_gamma1,
+    t_gamma2,
+    t_gamma3,
+    t_gamma0_minus_rf,
+    mean_adj_r_squared,
+    sd_adj_r_squared
+  )
+
+#rename variables
+combined_table3 <- combined_table3 %>%
+  rename(
+    Panel = panel,
+    `gamma0-Rf` = mean_gama0_minus_rf,
+    `s(gamma0)` = s_gamma0,
+    `s(gamma1)` = s_gamma1,
+    `s(gamma2)` = s_gamma2,
+    `s(gamma3)` = s_gamma3,
+    `Rho_0(gamma0-Rf)` = corr0_gamma0_minus_rf,
+    `Rho_m(gamma1)` = corr_m1,
+    `Rho_0(gamma2)` = corr0_2,
+    `Rho_0(gamma3)` = corr0_3,
+    `t(gamma0)` = t_gamma0,
+    `t(gamma1)` = t_gamma1,
+    `t(gamma2)` = t_gamma2,
+    `t(gamma3)` = t_gamma3,
+    `t(gamma0-Rf)` = t_gamma0_minus_rf,
+    `r^2` = mean_adj_r_squared,
+    `s(r^2)` = sd_adj_r_squared
+  )
+
+#outputting table3
+write.xlsx(combined_table3, "table3.xlsx", rowNames = FALSE)
+
+#finish by Kristina

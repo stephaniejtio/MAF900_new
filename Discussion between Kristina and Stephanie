@@ -161,6 +161,15 @@ Hey,
 3. My logic is to create two functions when we do table 3, you can mock my work to do panel B. 
 4. Can you delete those useless files from github, thanks. 
 
+Kristina (20241016)
+Hey, I already checked. 
+1. You dont need to rerun the calculate_gamma_with_table3_yearly_update function, as this is only the function to integrate all betas we calculated together into a table, and then we can use it in Table3. 
+2. In panel b, some places forgot to add beta_square, which u need to be careful (in regression dataframe, regression_summary, and you also need to add the correlation of gamma2, you need create regression_summary3 to collect the relevant statistics of gamma3, and then integate to regression_summary, t statistics of gamma2)
+3. I already helped u modify your codes. But again, u need to review my codes carefully and try understand, then you will not forget any inputs. 
+4. After writing the codes, it is better to run it again to see if we get the correct results. You can use a period to check. 
+5. I also added sd of residuals in calculate_gamma_with_table3_yearly_update function, you can directly use for your panel c. 
+6. I done panel d. you can add your panel c in the middle of b and d. 
+
 Stephanie (223935051) 
 hey Kristina,
 I have updated the code for Panel C Table 3.
@@ -169,5 +178,13 @@ I have started the report analysis (in Google Docs) I sent you via your email.
 this is the link to the report: https://docs.google.com/document/d/1lbir2fLs0rzVQjQ1cQYFU1pxNN-S3u4IcVxG5zrmt38/edit?usp=sharing
 Please feel free to review.
 Meanwhile, I'll continue on the report, I'll check and review the codes, including adding descriptions and explanations in the r script.
+
+Kristina (20241017)
+Hey,
+1. I did not see your codes of table 4. Did you create that and pull?
+2. I already checked your panel c, which is correct, thanks. 
+3. I added many codes for creating table 1 and formatting table 2 and table 3, please see my codes.(For table 3, i also modified the functions of four panels to add period and panel variables to them)
+4. For each table, I already formatted the variable names. 
+5. I uploaded table 1,2,3 xlsx files to github, which already formatted and we can use this result for our report. 
 
 
