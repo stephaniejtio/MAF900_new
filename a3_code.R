@@ -618,7 +618,10 @@ run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end,
            ratio = stddev_residuals / mean_idsr_avg,
            date1 = as.Date(portfolio_start),
            date2 = as.Date(estimation_start),
-           date3 = as.Date(testing_start))
+           date3 = as.Date(testing_start),
+           date4 = as.Date(portfolio_end),
+           date5 = as.Date(estimation_end),
+           date6 = as.Date(testing_end))
   
   return(final_table)
 }
@@ -690,12 +693,15 @@ combined_results <- do.call(rbind, lapply(results, as.data.frame))
 table1 <- combined_results %>%
   filter(portfolio == 1) %>%
   mutate(
-    date1 = as.Date(date1, format = "%Y-%m-%d"),
+    date1 = as.Date(date1, format = "%Y-%m-%d"), #make sure the format of date
     date2 = as.Date(date2, format = "%Y-%m-%d"),
-    date3 = as.Date(date3, format = "%Y-%m-%d"), #make sure the format of date
-    `Portfolio formation period` = year(date1),
-    `Initial estimation period` = year(date2),
-    `Testing period` = year(date3),  #finding the year
+    date3 = as.Date(date3, format = "%Y-%m-%d"), 
+    date4 = as.Date(date4, format = "%Y-%m-%d"), 
+    date5 = as.Date(date5, format = "%Y-%m-%d"), 
+    date6 = as.Date(date6, format = "%Y-%m-%d"), 
+    `Portfolio formation period` = paste(year(date1), year(date4), sep = " - "),
+    `Initial estimation period` = paste(year(date2), year(date5), sep = " - "),
+    `Testing period` = paste(year(date3), year(date6), sep = " - "),  #finding the year
     `No. of securities available` = count_first_month,  
     `No. of securities meeting data requirement` = count_in_all_months  
     ) %>%
