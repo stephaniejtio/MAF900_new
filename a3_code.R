@@ -337,9 +337,7 @@ table2 <- stddev_by_portfolio3 %>%
 #finished by Kristina 
 
 
-#Start by Stephanie 
-#updated with sample size 1935 to 1938
-#Row 5
+#start by Stephanie
 #standard deviation of the portfolio residuals
 
 #regression for each portfolio to get the residuals
