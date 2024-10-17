@@ -693,18 +693,18 @@ combined_results <- do.call(rbind, lapply(results, as.data.frame))
 table1 <- combined_results %>%
   filter(portfolio == 1) %>%
   mutate(
-    date1 = as.Date(date1, format = "%Y-%m-%d"), #make sure the format of date
+    date1 = as.Date(date1, format = "%Y-%m-%d"),
     date2 = as.Date(date2, format = "%Y-%m-%d"),
-    date3 = as.Date(date3, format = "%Y-%m-%d"), 
-    date4 = as.Date(date4, format = "%Y-%m-%d"), 
-    date5 = as.Date(date5, format = "%Y-%m-%d"), 
-    date6 = as.Date(date6, format = "%Y-%m-%d"), 
+    date3 = as.Date(date3, format = "%Y-%m-%d"),
+    date4 = as.Date(date4, format = "%Y-%m-%d"),
+    date5 = as.Date(date5, format = "%Y-%m-%d"),
+    date6 = as.Date(date6, format = "%Y-%m-%d"),
     `Portfolio formation period` = paste(year(date1), year(date4), sep = " - "),
     `Initial estimation period` = paste(year(date2), year(date5), sep = " - "),
-    `Testing period` = paste(year(date3), year(date6), sep = " - "),  #finding the year
-    `No. of securities available` = count_first_month,  
-    `No. of securities meeting data requirement` = count_in_all_months  
-    ) %>%
+    `Testing period` = paste(year(date3), year(date6), sep = " - "),
+    `No. of securities available` = as.character(count_first_month),
+    `No. of securities meeting data requirement` = as.character(count_in_all_months)
+  ) %>%
   select(
     `Portfolio formation period`,
     `Initial estimation period`,
@@ -728,6 +728,7 @@ table1 <- combined_results %>%
     "No. of securities meeting data requirement"
   ))) %>%
   arrange(Variable)
+
 
 colnames(table1)[-1] <- paste0("Period", 1:(ncol(table1) - 1))
 
