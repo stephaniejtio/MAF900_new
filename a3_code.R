@@ -1601,7 +1601,7 @@ table3_panelc_function <- function(combined_results, start, end) {
     filter(month >= as.Date(start) & month <= as.Date(end)) %>%
     group_by(month) %>%
     do({
-      # Include the beta term and residual standard deviation in the regression
+      # Panel C: Include the beta term and residual standard deviation in the regression
       model <- lm(avg_ret ~ mean_beta + mean_residual_sd, data = .)
       tidy(model)
     }) %>%
@@ -1811,9 +1811,7 @@ panelc <- lapply(combined_periods, function(combined_periods) {
 
 #combine results into a data frame
 t3_panelc <- do.call(rbind, lapply(panelc, as.data.frame))
-
 #finish by Stephanie
-
 
 #start by Kristina
 #panel d begins
@@ -2072,8 +2070,6 @@ t3_paneld <- t3_paneld %>% mutate(panel = "panel_d")
 #integrating all four panels together
 combined_table3 <- bind_rows(t3_panela, t3_panelb, t3_panelc, t3_paneld)
 
-
-
 #rearrange the order of the columns of combined_table3
 combined_table3 <- combined_table3 %>%
   select(
@@ -2127,85 +2123,3 @@ combined_table3 <- combined_table3 %>%
 write.xlsx(combined_table3, "table3.xlsx", rowNames = FALSE)
 
 #finish by Kristina
-
-
-
-# Steph
-
-# TABLE 4 Fama Macbeth (1973) (in progress)
-# Calculate excess returns and necessary statistics for Table 4
-table4_data_with_corr <- combined_results %>%
-  mutate(excess_mkt_ret = avg_mkt - rf,  # Market excess return using avg_mkt
-         excess_portfolio_ret = avg_ret - rf) %>%  # Portfolio excess return using avg_ret
-  group_by(month_label) %>%
-  summarise(
-    mean_rm_rf = mean(excess_mkt_ret, na.rm = TRUE),  # Mean market excess return
-    sd_rm = sd(excess_mkt_ret, na.rm = TRUE),  # Standard deviation of market returns
-    mean_rf = mean(rf, na.rm = TRUE),  # Mean risk-free rate
-    sd_rf = sd(rf, na.rm = TRUE),  # Standard deviation of risk-free rate
-    mean_ret = mean(avg_ret, na.rm = TRUE),  # Mean portfolio return
-    sd_ret = sd(avg_ret, na.rm = TRUE),  # Standard deviation of portfolio returns
-    first_order_corr_rm = ifelse(sd(excess_mkt_ret, na.rm = TRUE) == 0, NA, 
-                                 cor(lag(excess_mkt_ret), excess_mkt_ret, use = "complete.obs")),  # First-order autocorrelation of market return
-    first_order_corr_rf = ifelse(sd(rf, na.rm = TRUE) == 0, NA, 
-                                 cor(lag(rf), rf, use = "complete.obs"))  # First-order autocorrelation of risk-free rate
-  )
-
-
-# Calculate t-statistics for the returns and risk-free rate
-table4_stats <- table4_data_with_corr %>%
-  # Use mean_rm_rf instead of avg_mkt
-  mutate(
-    excess_mkt_ret = mean_rm_rf,  # Market excess return using mean_rm_rf
-    excess_portfolio_ret = mean_ret - mean_rf,  # Portfolio excess return using mean_ret and mean_rf
-    # Calculate t-statistics
-    t_rm_rf = ifelse(sd_rm == 0, NA, mean_rm_rf / (sd_rm / sqrt(n()))),  # t-stat for market excess return
-    t_rf = ifelse(sd_rf == 0, NA, mean_rf / (sd_rf / sqrt(n()))),  # t-stat for risk-free rate
-    t_ret = ifelse(sd_ret == 0, NA, mean_ret / (sd_ret / sqrt(n())))  # t-stat for portfolio return
-  ) %>%
-  # Calculate first-order autocorrelations
-  mutate(
-    first_order_corr_rm = cor(lag(excess_mkt_ret), excess_mkt_ret, use = "complete.obs", method = "pearson"),
-    first_order_corr_rf = cor(lag(mean_rf), mean_rf, use = "complete.obs", method = "pearson")
-  )
-
-table4 <- table4_stats %>%
-  select(
-    month_label,  # Replacing period with month_label
-    mean_rm_rf, sd_rm, t_rm_rf,  # Market excess return statistics
-    mean_rf, sd_rf, t_rf,  # Risk-free rate statistics
-    mean_ret, sd_ret, t_ret,  # Portfolio return statistics
-    first_order_corr_rm, first_order_corr_rf  # Other relevant metrics
-  )
-
-output_table4 <- table4_stats %>%
-  select(
-    month_label,  # You can replace this with any appropriate time grouping (period, year, etc.)
-    mean_rm_rf,   # Mean market excess return
-    sd_rm,        # Standard deviation of market returns
-    t_rm_rf,      # t-statistic for market excess return
-    mean_rf,      # Mean risk-free rate
-    sd_rf,        # Standard deviation of risk-free rate
-    t_rf,         # t-statistic for risk-free rate
-    mean_ret,     # Mean portfolio return
-    sd_ret,       # Standard deviation of portfolio returns
-    t_ret,        # t-statistic for portfolio returns
-    first_order_corr_rm,  # First-order autocorrelation of market return
-    first_order_corr_rf   # First-order autocorrelation of risk-free rate
-  )
-
-print(output_table4)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
