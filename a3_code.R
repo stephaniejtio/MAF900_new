@@ -1,5 +1,9 @@
-#the following codes are for MAF900 assignment 3 in T3 2024. 
-#start from kristina
+# MAF900 Assignment 3 - T2 2024
+# By Stephanie and Kristina
+# Fama Macbeth (1973) Replication
+
+#The following codes are for MAF900 assignment 3 in T3 2024. 
+#Start from kristina
 #install.packages("broom")
 #install.packages("slider")
 install.packages("officer")
@@ -28,14 +32,13 @@ library(xtable)
 library(openxlsx)
 library(tidyr)
 
-#connect to our wrds
+#connect to Steph wrds
 wrds <- dbConnect(Postgres(),
                   host='wrds-pgdata.wharton.upenn.edu',
                   port=9737,
                   dbname='wrds',
                   sslmode='require',
-                  user='replace',
-                  password='replace')
+                  user='stephaniejtio')
 
 #connect to kristina's wrds
 wrds <- dbConnect(Postgres(),
@@ -45,7 +48,7 @@ wrds <- dbConnect(Postgres(),
                   sslmode='require',
                   user='s224294027')
 
-#collect CRSP monthly stock return data 
+#Collect CRSP monthly stock return data 
 msf_db <- tbl(wrds, sql("select * from crsp.msf"))
 start_date <- ymd("1926-01-01")
 end_date <- ymd("2023-12-31")
@@ -58,7 +61,7 @@ crsp_monthly <- msf_db |>
     ret, # Return
   ) |> collect()
 
-#stock and exchange identifier
+#Stock and exchange identifier
 msenames_db <- tbl(wrds, sql("select * from crsp.msenames"))
 
 crsp_stockids <- msenames_db |>
@@ -68,10 +71,10 @@ capm_data <- crsp_monthly |> inner_join(
   crsp_stockids |>
     select(permno, primexch), by = c("permno"))
 
-#create Fisher Index - for Rm
+#Create Fisher Index - for Rm
 fi_mkt <- capm_data|> group_by(date)|> summarise(raw_mkt = mean(ret, na.rm = TRUE))
 
-#combine stock return and market return i.e. fisher index return
+#Combine stock return and market return i.e. fisher index return
 capm_data <- capm_data %>%
   select(permno, date, ret) %>%
   rename(raw_ret = ret) %>%
@@ -80,18 +83,18 @@ capm_data <- capm_data %>%
   arrange(permno, month) %>%
   drop_na(raw_ret, raw_mkt)
 
-#finding the securities meeting the data requirements
-#finding the securies during Jan 1935 (first month of a tesing period)
+#Finding the securities meeting the data requirements
+#Finding the securies during Jan 1935 (first month of a tesing period)
 permno_first_month <- capm_data %>%
   filter(month >= as.Date("1935-01-01") & month < as.Date("1935-02-01")) %>%
   select(permno) %>%
   distinct()%>%
   pull(permno)
 
-#calculate the number of permno in January 1935
+#Calculate the number of permno in January 1935
 count_first_month <- length(permno_first_month)
 
-#count the number of permnos that have data for each month from 1926 to 1934
+#Count the number of permnos that have data for each month from 1926 to 1934
 count_valid_permno <- capm_data %>%
   filter(month >= as.Date("1926-01-01") & month <= as.Date("1934-12-31")) %>%
   filter(permno %in% permno_first_month) %>%
@@ -99,79 +102,79 @@ count_valid_permno <- capm_data %>%
   summarize(months_count = n_distinct(format(month, "%Y-%m"))) %>%
   filter(months_count == 108)
 
-#the amount
+# The amount
 count_in_all_months <- nrow(count_valid_permno)
 #finished by kristina 
 
-#start by Stephanie
-#portfolio formation 
-#calculate BETA for period 1926-1929
+#Start by Stephanie
+#Portfolio formation 
+#Calculate BETA for period 1926-1929
 capm_data1 <- capm_data %>%
   filter(month >= as.Date("1926-01-01") & month <= as.Date("1929-12-31"))
 capm_data1<- capm_data1 %>%
   inner_join(count_valid_permno, by = "permno")
 
-#calculate beta for each company
+#Calculate beta for each company
 beta_results <- capm_data1 %>%
   group_by(permno) %>%
   do(tidy(lm(raw_ret ~ raw_mkt, data = .)))
 
-#print the results for beta
+#Print the results for beta
 print(beta_results)
 
-#filter for the beta results
+#Filter for the beta results
 beta_results_only <- beta_results %>%
   filter(term == "raw_mkt") %>%
   select(permno, beta = estimate, std_error = std.error, t_statistic = statistic, p_value = p.value)
 
-#beta results for each of the company 
+#Beta results for each of the company 
 print(beta_results_only) 
 
-#check for NA values 
+#Check for NA values 
 sum(is.na(beta_results_only$beta)) 
 
-#remove NA values from beta
+#Remove NA values from beta
 beta_results_only <- beta_results_only %>%
   filter(!is.na(beta))
 
 beta_results_only <- beta_results_only %>%
   arrange(beta) 
 
-#based on the paper Page 615 section B.Details 
-#allocating securities into 20 portfolios 
+#Based on the paper Page 615 section B.Details 
+#Allocating securities into 20 portfolios 
 
-#calculate the total number of securities 
+#Calculate the total number of securities 
 N <- nrow(beta_results_only)
 
-#calculate the number of securities, middle portfolios
+#Calculate the number of securities, middle portfolios
 securities_per_portfolio <- floor(N / 20)
 
-#calculate the remainder, allocate to first and last portfolios
+#Calculate the remainder, allocate to first and last portfolios
 remainder <- N - 20 * securities_per_portfolio
 
-#determine number of securities, first and last portfolios
+#Determine number of securities, first and last portfolios
 first_last_extra <- floor(remainder / 2)
 last_portfolio_extra <- remainder %% 2  # If odd, last portfolio gets an extra security
 
-#calculating the size of each porfolio
+#Calculating the size of each porfolio
 portfolio_sizes <- c(
   securities_per_portfolio + first_last_extra,        # first portfolio
   rep(securities_per_portfolio, 18),                 # 2nd to 19th portfolio
   securities_per_portfolio + first_last_extra + last_portfolio_extra  # 20th portfolio
 )
 
-#create a variable named portfolio
+#Create a variable named portfolio
 beta_results_only$portfolio <- rep(1:20, times = portfolio_sizes)
 
-#start from Kristina
-#calculate BETA for period 1930-1934
+#Start from Kristina
+#Calculate BETA for period 1930-1934
 capm_data2 <- capm_data %>%
   filter(month >= as.Date("1930-01-01") & month <= as.Date("1934-12-31")) 
 
 capm_data2<- capm_data2 %>%
   inner_join(count_valid_permno, by = "permno")
 
-#compute the regression model for each permno and extract the standard deviations of residuals
+#Compute the regression model for each permno and extract the standard deviations of residuals
 beta_results2 <- capm_data2 %>%
   group_by(permno) %>%
   do({
@@ -186,34 +189,34 @@ beta_results_only2 <- beta_results2 %>%
   filter(term == "raw_mkt") %>%
   select(permno, beta = estimate, std_error = std.error, t_statistic = statistic, p_value = p.value, idsr = idsr)
 
-#remove for NA beta
+#Remove for NA beta
 beta_results_only2 <- beta_results_only2 %>%
   filter(!is.na(beta))
 
-#calculate the portfolio return during 1935-1938
-#set a new dataset for period 1935-1938
+#Calculate the portfolio return during 1935-1938
+#Set a new dataset for period 1935-1938
 capm_data3 <- capm_data %>%
   filter(month >= as.Date("1935-01-01") & month <= as.Date("1938-12-31"))
 capm_data3<- capm_data3 %>%
   inner_join(count_valid_permno, by = "permno")
 
-#portfolio
+#Portfolio
 capm_data3<- capm_data3 %>%
   inner_join(beta_results_only %>% select(permno, portfolio), by = "permno")
 
-#join beta_results_only2 with portfolio number
+#Join beta_results_only2 with portfolio number
 beta_results_only2 <- beta_results_only2 %>%
   inner_join(beta_results_only %>% select(permno, portfolio), by = "permno")
 
-#calculate the porfolio beta and standard errors of beta during 1930-1934.
+#Calculate the porfolio beta and standard errors of beta during 1930-1934.
 beta_means_by_portfolio2 <- beta_results_only2 %>%
   group_by(portfolio) %>%              
   summarise(mean_beta = mean(beta, na.rm = TRUE),
             mean_std_beta = mean(std_error, na.rm = TRUE),
             mean_idsr = mean(idsr, na.rm = TRUE))
 
-#calculate the porfolio beta and standard errors of beta during 1930-1935.
-#filter the data by date range and group by permno, run the regression.
+#Calculate the porfolio beta and standard errors of beta during 1930-1935.
+#Filter the data by date range and group by permno, run the regression.
 beta_means_by_portfolio2 <- capm_data %>%
   filter(month >= as.Date("1930-01-01") & month <= as.Date("1935-12-31")) %>%
   inner_join(count_valid_permno, by = "permno") %>%
@@ -240,8 +243,8 @@ beta_means_by_portfolio2 <- capm_data %>%
   ungroup()%>%
   inner_join(beta_means_by_portfolio2, by = "portfolio")
 
-#calculate the porfolio beta and standard errors of beta during 1930-1936.
-#filter the data by date range and group by permno, run the regression.
+#Calculate the porfolio beta and standard errors of beta during 1930-1936.
+#Filter the data by date range and group by permno, run the regression.
 beta_means_by_portfolio2 <- capm_data %>%
   filter(month >= as.Date("1930-01-01") & month <= as.Date("1936-12-31")) %>%
   inner_join(count_valid_permno, by = "permno") %>%
@@ -268,8 +271,8 @@ beta_means_by_portfolio2 <- capm_data %>%
   ungroup()%>%
   inner_join(beta_means_by_portfolio2, by = "portfolio")
 
-#calculate the porfolio beta and standard errors of beta during 1930-1937.
-#filter the data by date range and group by permno, run the regression.
+#Calculate the porfolio beta and standard errors of beta during 1930-1937.
+#Filter the data by date range and group by permno, run the regression.
 beta_means_by_portfolio2 <- capm_data %>%
   filter(month >= as.Date("1930-01-01") & month <= as.Date("1937-12-31")) %>%
   inner_join(count_valid_permno, by = "permno") %>%
@@ -296,7 +299,7 @@ beta_means_by_portfolio2 <- capm_data %>%
   ungroup()%>%
   inner_join(beta_means_by_portfolio2, by = "portfolio")
 
-#calculate mean beta and std. 
+#Calculate mean beta and std. 
 beta_means_by_portfolio2 <- beta_means_by_portfolio2 %>%
   group_by(portfolio) %>%
   summarise(
@@ -305,14 +308,14 @@ beta_means_by_portfolio2 <- beta_means_by_portfolio2 %>%
     mean_idsr_avg = mean(c(mean_idsr, mean_idsr1, mean_idsr2, mean_idsr3, na.rm = TRUE)),
   )
 
-#calculate the monthly portfolio return
+#Calculate the monthly portfolio return
 average_by_portfolio_month3 <- capm_data3 %>%
   group_by(portfolio, month) %>%        
   summarize(avg_ret = mean(raw_ret, na.rm = TRUE), 
             avg_mkt = mean(raw_mkt, na.rm = TRUE)) %>%
   ungroup()
 
-#linear regression calculates the R^2 between avg_ret and avg_mkt
+#Linear regression calculates the R^2 between avg_ret and avg_mkt
 r_squared_by_portfolio3 <- average_by_portfolio_month3 %>%
   group_by(portfolio) %>% 
   do({
@@ -322,7 +325,7 @@ r_squared_by_portfolio3 <- average_by_portfolio_month3 %>%
   }) %>%
   ungroup() 
 
-#calculate the standard deviation of avg_ret by portfolio classification
+#Calculate the standard deviation of avg_ret by portfolio classification
 stddev_by_portfolio3 <- average_by_portfolio_month3 %>%
   group_by(portfolio) %>% 
   summarise(
@@ -330,17 +333,17 @@ stddev_by_portfolio3 <- average_by_portfolio_month3 %>%
   ) %>%
   ungroup() 
 
-#create a new file named table2 to merge together
+#Create a new file named table2 to merge together
 table2 <- stddev_by_portfolio3 %>%
   inner_join(r_squared_by_portfolio3, by = "portfolio") %>%
   inner_join(beta_means_by_portfolio2, by = "portfolio") 
 #finished by Kristina 
 
 
-#start by Stephanie
-#standard deviation of the portfolio residuals
+#Start by Stephanie
+#Standard deviation of the portfolio residuals
 
-#regression for each portfolio to get the residuals
+#Regression for each portfolio to get the residuals
 portfolio_residuals3 <- average_by_portfolio_month3 %>%
   group_by(portfolio) %>%
   do({
@@ -349,32 +352,32 @@ portfolio_residuals3 <- average_by_portfolio_month3 %>%
     data.frame(month = .$month, residuals = residuals)
   })
 
-#calculate the standard deviation of residuals for each portfolio 
-#standard deviation of residuals
+#Calculate the standard deviation of residuals for each portfolio 
+#Standard deviation of residuals
 stddev_residuals_by_portfolio3 <- portfolio_residuals3 %>%
   group_by(portfolio) %>%
   summarise(stddev_residuals = sd(residuals, na.rm = TRUE))
 
-#join to table2
+#Join to table2
 table2 <- table2 %>%
   inner_join(stddev_residuals_by_portfolio3, by = "portfolio")
 
-#start by Stephanie and Kristina
-#we generate a function to repeat the above steps by using different period.
-#generalized function to perform Fama-MacBeth type analysis for a given period
+#Start by Stephanie and Kristina
+#We generate a function to repeat the above steps by using different period.
+#Generalised function to perform Fama-MacBeth type analysis for a given period
 run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end, estimation_start, estimation_end, estimation_end1, estimation_end2, estimation_end3, testing_start,testing_start1, testing_end) {
   
-  #finding the securities meeting the data requirements
+  #Finding the securities meeting the data requirements
   permno_first_month <- capm_data %>%
     filter(month >= as.Date(testing_start) & month < as.Date(testing_start1)) %>%
     select(permno) %>%
     distinct()%>%
     pull(permno)
   
-  #calculate the number of permno in first month of testing period
+  #Calculate the number of permno in first month of testing period
   count_first_month <- length(permno_first_month)
   
-  #count the number of permnos that meeting the data requirement
+  #Count the number of permnos that meeting the data requirement
   valid_permnos_formation <- capm_data %>%
     filter(month >= as.Date(portfolio_start) & month <= as.Date(portfolio_end)) %>%
     mutate(year = format(month, "%Y"), month = format(month, "%m")) %>%
@@ -400,7 +403,7 @@ run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end,
   #the amount
   count_in_all_months <- nrow(count_valid_permno)
   
-  #portfolio formation period: calculate BETA for portfolio_start to portfolio_end
+  #Portfolio formation period: calculate BETA for portfolio_start to portfolio_end
   portfolio_data <- capm_data %>%
     filter(month >= as.Date(portfolio_start) & month <= as.Date(portfolio_end))
   portfolio_data<- portfolio_data %>%
@@ -410,13 +413,13 @@ run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end,
     group_by(permno) %>%
     do(tidy(lm(raw_ret ~ raw_mkt, data = .)))
   
-  #filter beta results and assign portfolios
+  #Filter beta results and assign portfolios
   beta_results_only <- beta_results %>%
     filter(term == "raw_mkt") %>%
     select(permno, beta = estimate, std_error = std.error, t_statistic = statistic, p_value = p.value) %>%
     filter(!is.na(beta))
   
-  #calculate the number of securities and assign portfolios based on ranked betas
+  #Calculate the number of securities and assign portfolios based on ranked betas
   beta_results_only <- beta_results_only %>%
     arrange(beta) 
   
@@ -434,13 +437,13 @@ run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end,
   
   beta_results_only$portfolio <- rep(1:20, times = portfolio_sizes)
   
-  #initial Estimation Period: calculate BETA year by year
+  #Initial Estimation Period: calculate BETA year by year
   estimation_period_data <- capm_data %>%
     filter(month >= as.Date(estimation_start) & month <= as.Date(estimation_end))
   estimation_period_data<- estimation_period_data %>%
     inner_join(count_valid_permno, by = "permno")
   
-  #beta calculations
+  #Beta calculations
   beta_results2 <- estimation_period_data %>%
     group_by(permno) %>%
     do({
@@ -458,29 +461,29 @@ run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end,
   beta_results_only2 <- beta_results_only2 %>%
     filter(!is.na(beta))
   
-  #testing Period: Calculate returns for each portfolio
+  #Testing Period: Calculate returns for each portfolio
   testing_period_data <- capm_data %>%
     filter(month >= as.Date(testing_start) & month <= as.Date(testing_end))
   testing_period_data<- testing_period_data %>%
     inner_join(count_valid_permno, by = "permno")
   
-  #portfolio
+  #Portfolio
   testing_period_data<- testing_period_data %>%
     inner_join(beta_results_only %>% select(permno, portfolio), by = "permno")
   
-  #join beta_results_only2 with portfolio number
+  #Join beta_results_only2 with portfolio number
   beta_results_only2 <- beta_results_only2 %>%
     inner_join(beta_results_only %>% select(permno, portfolio), by = "permno")
   
-  #calculate the porfolio beta and standard errors of beta.
+  #Calculate the porfolio beta and standard errors of beta.
   beta_means_by_portfolio2 <- beta_results_only2 %>%
     group_by(portfolio) %>%              
     summarise(mean_beta = mean(beta, na.rm = TRUE),
               mean_std_beta = mean(std_error, na.rm = TRUE),
               mean_idsr = mean(idsr, na.rm = TRUE))
   
-  #calculate the porfolio beta and standard errors of beta by updating one year.
-  #filter the data by date range and group by permno, run the regression.
+  #Calculate the porfolio beta and standard errors of beta by updating one year.
+  #Filter the data by date range and group by permno, run the regression.
   beta_means_by_portfolio2 <- capm_data %>%
     filter(month >= as.Date(estimation_start) & month <= as.Date(estimation_end1)) %>%
     inner_join(count_valid_permno, by = "permno") %>%
@@ -507,8 +510,8 @@ run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end,
     ungroup()%>%
     inner_join(beta_means_by_portfolio2, by = "portfolio")
   
-  #calculate the porfolio beta and standard errors of beta by updating one year.
-  #filter the data by date range and group by permno, run the regression.
+  #Calculate the porfolio beta and standard errors of beta by updating one year.
+  #Filter the data by date range and group by permno, run the regression.
   beta_means_by_portfolio2 <- capm_data %>%
     filter(month >= as.Date(estimation_start) & month <= as.Date(estimation_end2)) %>%
     inner_join(count_valid_permno, by = "permno") %>%
@@ -535,8 +538,8 @@ run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end,
     ungroup()%>%
     inner_join(beta_means_by_portfolio2, by = "portfolio")
   
-  #calculate the porfolio beta and standard errors of beta by updating one year.
-  #filter the data by date range and group by permno, run the regression.
+  #Calculate the porfolio beta and standard errors of beta by updating one year.
+  #Filter the data by date range and group by permno, run the regression.
   beta_means_by_portfolio2 <- capm_data %>%
     filter(month >= as.Date(estimation_start) & month <= as.Date(estimation_end3)) %>%
     inner_join(count_valid_permno, by = "permno") %>%
@@ -563,7 +566,7 @@ run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end,
     ungroup()%>%
     inner_join(beta_means_by_portfolio2, by = "portfolio")
   
-  #calculate mean beta and std. 
+  #Calculate mean beta and std. 
   beta_means_by_portfolio2 <- beta_means_by_portfolio2 %>%
     group_by(portfolio) %>%
     summarise(
@@ -572,13 +575,13 @@ run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end,
       mean_idsr_avg = mean(c(mean_idsr, mean_idsr1, mean_idsr2, mean_idsr3, na.rm = TRUE)),
     )
   
-  #calculate average returns by portfolio
+  #Calculate average returns by portfolio
   average_by_portfolio_month <- testing_period_data %>%
     group_by(portfolio, month) %>%
     summarize(avg_ret = mean(raw_ret, na.rm = TRUE), avg_mkt = mean(raw_mkt, na.rm = TRUE)) %>%
     ungroup()
   
-  #calculate R-squared values
+  #Calculate R-squared values
   r_squared_by_portfolio <- average_by_portfolio_month %>%
     group_by(portfolio) %>%
     do({
@@ -588,13 +591,13 @@ run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end,
     }) %>%
     ungroup()
   
-  #calculate standard deviation of returns
+  #Calculate standard deviation of returns
   stddev_by_portfolio <- average_by_portfolio_month %>%
     group_by(portfolio) %>%
     summarise(stddev_avg_ret = sd(avg_ret, na.rm = TRUE)) %>%
     ungroup()
   
-  #residuals
+  #Residuals
   portfolio_residuals3 <- average_by_portfolio_month %>%
     group_by(portfolio) %>%
     do({
@@ -603,12 +606,12 @@ run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end,
       data.frame(month = .$month, residuals = residuals)
     })
   
-  #standard deviation of residuals
+  #Standard Deviations of residuals
   stddev_residuals_by_portfolio3 <- portfolio_residuals3 %>%
     group_by(portfolio) %>%
     summarise(stddev_residuals = sd(residuals, na.rm = TRUE)) 
   
-  #calculate the final table merging all information
+  #Calculate the final table merging all information
   final_table <- stddev_by_portfolio %>%
     inner_join(r_squared_by_portfolio, by = "portfolio") %>%
     inner_join(beta_means_by_portfolio2, by = "portfolio")%>%
@@ -821,8 +824,8 @@ write.xlsx(table2_combined, "table2.xlsx", rowNames = FALSE)
 
 #start by Stephanie and Kristina
 #TABLE 3
-###collect FF 3 factor data
-#based on Dr. Saikat's lecture Topic 6
+###Collect FF 3 factor data
+#Based on Dr. Saikat's lecture Topic 6
 temp <- tempfile(fileext = ".zip")
 download.file("http://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_CSV.zip", temp)
 temp1 <- unzip(temp, exdir = ".")
@@ -847,21 +850,21 @@ ff_3factors_mon <- ff_3factors_monthly |>
   select(c('date', 'rf', 'month_label')) 
 
 
-#function to help to get all betas used in table3 to get gammas
+#Function to help to get all betas used in Table 3 to get gammas
 calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start, portfolio_end, estimation_start, estimation_end, 
                                                       estimation_end1, estimation_end2, estimation_end3, testing_start, testing_start1, testing_end, 
                                                       testing_start_m1, testing_start_m2, testing_start_m3, testing_start_m4, testing_end_m1, 
                                                       testing_end_m2, testing_end_m3, testing_end_m4) {
   
   
-  #identify the permno available in the first testing month
+  #Identify the permno available in the first testing month
   permno_first_month <- capm_data %>%
     filter(month >= as.Date(testing_start)& month < as.Date(testing_start1)) %>%
     select(permno) %>%
     distinct() %>%
     pull(permno)
   
-  #filter permno for valid periods and data requirements
+  #Filter permno for valid periods and data requirements
   valid_permnos_formation <- capm_data %>%
     filter(month >= as.Date(portfolio_start) & month <= as.Date(portfolio_end)) %>%
     mutate(year = format(month, "%Y"), month = format(month, "%m")) %>%
@@ -873,7 +876,7 @@ calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start
     filter(years_count >= 4) %>%  
     pull(permno)
   
-  #count the valid permno from capm_data
+  #Count the valid permno from capm_data
   count_valid_permno  <- capm_data %>%
     filter(permno %in% valid_permnos_formation) %>%
     filter(month >= as.Date(estimation_start) & month <= as.Date(estimation_end)) %>%
@@ -885,7 +888,7 @@ calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start
     summarise(years_count = n()) %>%
     filter(years_count == 5) 
   
-  #assign portfolios based on ranked betas
+  #Assign portfolios based on ranked betas
   portfolio_data <- capm_data %>%
     filter(month >= as.Date(testing_start) & month <= as.Date(testing_end)) %>%
     inner_join(count_valid_permno, by = "permno")
@@ -894,17 +897,17 @@ calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start
     group_by(permno) %>%
     do(tidy(lm(raw_ret ~ raw_mkt, data = .)))
   
-  #filter only the beta results, assigned portfolios, permno, std error
+  #Filter only the beta results, assigned portfolios, permno, std error
   beta_results_only <- beta_results %>%
     filter(term == "raw_mkt") %>%
     select(permno, beta = estimate, std_error = std.error) %>%
     filter(!is.na(beta))
   
-  #arrange 
+  #Arrange 
   beta_results_only <- beta_results_only %>%
     arrange(beta) 
   
-  #securities per portfolio, we use the number of row of the previous data we got / 20
+  #Securities per portfolio, we use the number of row of the previous data we got / 20
   #20 is the number of portfolio - based on the Fama paper
   N <- nrow(beta_results_only)
   securities_per_portfolio <- floor(N / 20)
@@ -920,7 +923,7 @@ calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start
   
   beta_results_only$portfolio <- rep(1:20, times = portfolio_sizes)
   
-  #update yearly, calculate portfolio beta and standard errors for the estimation periods
+  #Update yearly, calculate portfolio beta and standard errors for the estimation periods
   beta_0 <- capm_data %>%
     filter(month >= as.Date(estimation_start) & month <= as.Date(estimation_end)) %>%
     inner_join(count_valid_permno, by = "permno") %>%
@@ -941,8 +944,8 @@ calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start
   #finish by Kristina and Stephanie. 
   
   
-  #start by Kristina
-  #calculate betas by updating one year at a time
+  #Start by Kristina
+  #Calculate betas by updating one year at a time
   beta_1 <- capm_data %>%
     filter(month >= as.Date(estimation_start) & month <= as.Date(estimation_end1)) %>%
     inner_join(count_valid_permno, by = "permno") %>%
@@ -1057,8 +1060,6 @@ calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start
 
   return(avg_returns_by_portfolio)
 }
-
-
 
 periods <- list()
 
@@ -1587,7 +1588,7 @@ t3_panelb <- do.call(rbind, lapply(panelb, as.data.frame))
 #finished by Stephanie, improved by Kristina
 
 #Table 3 PANEL C
-#start by Stephanie 
+#Start by Stephanie 
 
 #Panel C includes gamma3 (mean residual sd)
 #Panel C get estimates gamma0, gamma1, gamma3 (residual risk), without quadratic term for this panel
