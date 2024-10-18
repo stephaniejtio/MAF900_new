@@ -1589,14 +1589,14 @@ t3_panelb <- do.call(rbind, lapply(panelb, as.data.frame))
 #Table 3 PANEL C
 #start by Stephanie 
 
-#panel C includes gamma3 (mean residual sd)
-#panel C get estimates gamma0, gamma1, gamma3 (residual risk), without quadratic term for this panel
-#based on the Fama paper 
+#Panel C includes gamma3 (mean residual sd)
+#Panel C get estimates gamma0, gamma1, gamma3 (residual risk), without quadratic term for this panel
+#based on the Fama paper, aligned with the original paper's approach 
 
-#gamma3 corresponds to the residual variance (idiosyncratic risk)
+#Gamma3 corresponds to the residual variance (idiosyncratic risk)
 table3_panelc_function <- function(combined_results, start, end) {
   
-  #calculate gamma0, gamma1, and gamma3 using Fama-MacBeth regression (cross-sectional regression)
+  #Calculate gamma0, gamma1, and gamma3 using Fama-MacBeth regression (cross-sectional regression)
   table3 <- combined_results %>%
     filter(month >= as.Date(start) & month <= as.Date(end)) %>%
     group_by(month) %>%
@@ -1711,12 +1711,12 @@ table3_panelc_function <- function(combined_results, start, end) {
   corr_m0 <- cor(regression_summary$gama0_monthly, lag(regression_summary$gama0_monthly), use = "complete.obs")
   corr_m1 <- cor(regression_summary$gama1_monthly, lag(regression_summary$gama1_monthly), use = "complete.obs")
   
-  # Assuming a correlation with a mean of 0
+  # We assume a correlation with a mean of 0
   corr0_0 <- cor(regression_summary$gama0_monthly, lag(regression_summary$gama0_monthly) - mean_gama0, use = "complete.obs")
   corr0_1 <- cor(regression_summary$gama1_monthly, lag(regression_summary$gama1_monthly) - mean_gama1, use = "complete.obs")
   corr0_3 <- cor(regression_summary$gama3_monthly, lag(regression_summary$gama3_monthly) - mean_gama3, use = "complete.obs")
   
-  # Merge the results into table3
+  # Merge the results into Table3
   corr0_gamma0_minus_rf <- cor(regression_summary$gama0_minus_rf, lag(regression_summary$gama0_minus_rf) - mean_gama0_minus_rf, use = "complete.obs")
   
   t_gamma0_minus_rf <- regression_summary %>%
@@ -1758,7 +1758,7 @@ table3_panelc_function <- function(combined_results, start, end) {
 }
 
 
-#panel C
+# Assign list for each periods 
 periods1 <- list()
 
 #Define the start and end year
@@ -1890,12 +1890,14 @@ table3_paneld_function <- function(combined_results, start, end) {
     )%>%
     select(-contains("p.value"))
   
-  #calculate the sample mean
+  #Calculate the sample mean
+  # for each of mean gamma
   mean_gama0 <- mean(regression_summary$gama0_monthly, na.rm = TRUE)
   mean_gama1 <- mean(regression_summary$gama1_monthly, na.rm = TRUE)
   mean_gama2 <- mean(regression_summary$gama2_monthly, na.rm = TRUE)
   mean_gama3 <- mean(regression_summary$gama3_monthly, na.rm = TRUE)
   
+  # Calculate the regression summary for each
   regression_summary1 <- regression_summary %>%
     filter(!is.na(gama0_monthly))%>%
     select(
@@ -1937,6 +1939,7 @@ table3_paneld_function <- function(combined_results, start, end) {
     left_join(regression_summary3, by = "month")%>%
     left_join(regression_summary4, by = "month")
   
+  #modify the format of the year and month
   regression_summary <- regression_summary %>%
     mutate(month_label = format(month, "%Y-%m"))
   
@@ -2006,7 +2009,7 @@ table3_paneld_function <- function(combined_results, start, end) {
 }
 
 
-#panel d
+#Panel D, assign to list for each period
 periods1 <- list()
 
 #Define the start and end year
@@ -2097,7 +2100,7 @@ combined_table3 <- combined_table3 %>%
     sd_adj_r_squared
   )
 
-#rename variables
+#Rename variables for Table 3
 combined_table3 <- combined_table3 %>%
   rename(
     Panel = panel,
@@ -2121,7 +2124,7 @@ combined_table3 <- combined_table3 %>%
   mutate(across(-c(Period, Panel), ~ round(as.numeric(.), 3))) %>%
   mutate(Period = sub("^(\\d{4})-\\d{2}-\\d{2} to (\\d{4})-\\d{2}-\\d{2}$", "\\1-\\2", Period))
 
-#outputting table3
+# Outputting Table 3
 write.xlsx(combined_table3, "table3.xlsx", rowNames = FALSE)
 
 #finish by Kristina
@@ -2137,7 +2140,7 @@ fi_mkt_rf <- fi_mkt %>%
   mutate(Rm_Rf = as.numeric(raw_mkt - rf))%>%  
   select(-date.y, date = date.x)  #delete date.y and rename date.x to date
 
-#a function to calculate the new statistics in table 4 compared to panel a of table 3
+# Function to calculate the new statistics in table 4 compared to panel a of table 3
 table4_rm_rf_function <- function(fi_mkt_rf, start, end) {
   
   table4_1 <- fi_mkt_rf %>%
@@ -2161,14 +2164,14 @@ table4_rm_rf_function <- function(fi_mkt_rf, start, end) {
 
 }
 
-#define period
+# Define period
 periods1 <- list()
 
-#define the start and end year
+#Define the start and end year
 start_year <- 1946
 end_year <- 2015
 
-#Loop to for each time period
+# For Loop to for each time period
 for (year in seq(start_year, end_year, by = 10)) {
   start <- paste0(year, "-01-01")
   end <- paste0(year + 9, "-12-31")
