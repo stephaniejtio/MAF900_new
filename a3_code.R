@@ -687,10 +687,10 @@ results <- lapply(combined_periods, function(combined_periods) {
 })
 
 #combine results into a data frame
-combined_results <- do.call(rbind, lapply(results, as.data.frame))
+combined_results_table1_2 <- do.call(rbind, lapply(results, as.data.frame))
 
 #create table 1
-table1 <- combined_results %>%
+table1 <- combined_results_table1_2 %>%
   filter(portfolio == 1) %>%
   mutate(
     date1 = as.Date(date1, format = "%Y-%m-%d"),
@@ -736,7 +736,7 @@ colnames(table1)[-1] <- paste0("Period", 1:(ncol(table1) - 1))
 write.xlsx(table1, "table1.xlsx", rowNames = FALSE)
 
 #organizing table2
-table2 <- combined_results %>%
+table2 <- combined_results_table1_2 %>%
   filter(date3 == "1935-01-01" 
          | date3 == "1943-01-01"
          | date3 == "1951-01-01"
@@ -2117,9 +2117,403 @@ combined_table3 <- combined_table3 %>%
     `t(gamma0-Rf)` = t_gamma0_minus_rf,
     `r^2` = mean_adj_r_squared,
     `s(r^2)` = sd_adj_r_squared
-  )
+  )%>%
+  mutate(across(-c(Period, Panel), ~ round(as.numeric(.), 3))) %>%
+  mutate(Period = sub("^(\\d{4})-\\d{2}-\\d{2} to (\\d{4})-\\d{2}-\\d{2}$", "\\1-\\2", Period))
 
 #outputting table3
 write.xlsx(combined_table3, "table3.xlsx", rowNames = FALSE)
 
 #finish by Kristina
+
+#start by Kristina
+#Collecting Rm/Rf and calculate some statistics of Table 4
+fi_mkt_rf <- fi_mkt %>%
+  mutate(month_label = format(date, "%Y-%m")) %>%  #extract year and month
+  filter(month_label >= "1935-01" & month_label <= "2022-12")%>% #keep the specified range of months
+  left_join(ff_3factors_mon, by = "month_label")  %>% #join with ff_3factors_mon (including rf)
+  mutate(Rm_Rf = raw_mkt - rf) %>% #market excess return
+  mutate(Rm_Rf = format(round(Rm_Rf, 10), nsmall = 10, scientific = FALSE)) %>%#keep ten decimal places
+  mutate(Rm_Rf = as.numeric(raw_mkt - rf))%>%  
+  select(-date.y, date = date.x)  #delete date.y and rename date.x to date
+
+#a function to calculate the new statistics in table 4 compared to panel a of table 3
+table4_rm_rf_function <- function(fi_mkt_rf, start, end) {
+  
+  table4_1 <- fi_mkt_rf %>%
+    filter(date >= as.Date(start) & date <= as.Date(end)) %>%
+    summarise(
+      mean_raw_mkt = mean(raw_mkt, na.rm = TRUE),
+      sd_raw_mkt = sd(raw_mkt, na.rm = TRUE),
+      mean_Rm_Rf = mean(Rm_Rf, na.rm = TRUE),
+      sd_Rm_Rf = sd(Rm_Rf, na.rm = TRUE),
+      mean_rf = mean(rf, na.rm = TRUE),
+      sd_rf = sd(rf, na.rm = TRUE),
+      #calculate the first-order serial correlation
+      serial_corr_raw_mkt = cor(raw_mkt[-length(raw_mkt)], raw_mkt[-1], use = "complete.obs"),
+      serial_corr_Rm_Rf = cor(as.numeric(Rm_Rf)[-length(Rm_Rf)], as.numeric(Rm_Rf)[-1], use = "complete.obs"),
+      serial_corr_rf = cor(rf[-length(rf)], rf[-1], use = "complete.obs"),
+      #t-statistics
+      t_stat_raw_mkt = mean_raw_mkt / (sd_raw_mkt / sqrt(sum(!is.na(raw_mkt)))),
+      t_stat_Rm_Rf = mean_Rm_Rf / (sd_Rm_Rf / sqrt(sum(!is.na(Rm_Rf))))
+      
+    )
+
+}
+
+#define period
+periods1 <- list()
+
+#define the start and end year
+start_year <- 1946
+end_year <- 2015
+
+#Loop to for each time period
+for (year in seq(start_year, end_year, by = 10)) {
+  start <- paste0(year, "-01-01")
+  end <- paste0(year + 9, "-12-31")
+  
+  #add the generated time period to the list
+  periods1[[length(periods1) + 1]] <- list(
+    start = start,
+    end = end)
+}
+
+periods2 <- list()
+
+#define the start and end year
+start_year <- 1941
+end_year <- 2020
+
+#loop to generate each time period
+for (year in seq(start_year, end_year, by = 5)) {
+  start <- paste0(year, "-01-01")
+  end <- paste0(year + 4, "-12-31")
+  
+  #add the generated time period to the list
+  periods2[[length(periods2) + 1]] <- list(
+    start = start,
+    end = end)
+}
+
+custom_periods1 <- list(start = "1935-01-01", end = "2022-12-31")
+custom_periods2 <- list(start = "1935-01-01", end = "1945-12-31")
+custom_periods3 <- list(start = "1935-01-01", end = "1940-12-31")
+custom_periods4 <- list(start = "2016-01-01", end = "2022-12-31")
+custom_periods5 <- list(start = "2021-01-01", end = "2022-12-31")
+
+#add time periods to the periods list
+combined_periods <- c(list(custom_periods1), list(custom_periods2), periods1, list(custom_periods4), list(custom_periods3), periods2, list(custom_periods5))
+
+#loop through each period and calculate results
+table4_rm_rf <- lapply(combined_periods, function(combined_periods) {
+  result <- table4_rm_rf_function(fi_mkt_rf, combined_periods$start, combined_periods$end)
+  result$Period <- paste(combined_periods$start, "to", combined_periods$end)
+  return(result)
+})
+
+#combine results into a data frame
+t4_rm_rf <- do.call(rbind, lapply(table4_rm_rf, as.data.frame))
+
+#a function to rerun table 3 panela, as in table 4, Rho_m_gamma0 is added
+table3_panela_for_table4_function <- function(combined_results, start, end) {
+  
+  #calculate gamma0 and gamma1 using Fama-MacBeth regression (cross-sectional regression)
+  table3 <- combined_results %>% 
+    filter(month >= as.Date(start) & month <= as.Date(end)) %>%     
+    group_by(month) %>%       
+    do({       model <- lm(avg_ret ~ mean_beta, data = .)       
+    tidy(model)       }) %>%     
+    ungroup()%>%     
+    summarise(       
+      gamma0 = mean(estimate[term == "(Intercept)"], na.rm = TRUE),       
+      gamma1 = mean(estimate[term == "mean_beta"], na.rm = TRUE),       
+      s_gamma0 = mean(std.error[term == "(Intercept)"], na.rm = TRUE),       
+      s_gamma1 = mean(std.error[term == "mean_beta"], na.rm = TRUE),
+      .groups = 'drop'     )
+  
+  adjusted_r2 <- combined_results %>%
+    filter(month >= as.Date(start) & month <= as.Date(end)) %>% 
+    group_by(month) %>%
+    do({
+      model <- lm(avg_ret ~ mean_beta, data = .)
+      model_summary <- summary(model)
+      tibble(
+        month = unique(.$month),
+        adj_r_squared = model_summary$adj.r.squared
+      )
+    }) %>%
+    ungroup()
+  
+  mean_adjusted_r2 <- adjusted_r2 %>%
+    summarise(mean_adj_r_squared = mean(adj_r_squared, na.rm = TRUE),
+              sd_adj_r_squared = sd(adj_r_squared, na.rm = TRUE))
+  
+  table3 <- table3 %>%
+    left_join(mean_adjusted_r2, by = character())
+  
+  regressions <- combined_results %>%
+    filter(month >= as.Date(start) & month <= as.Date(end)) %>% 
+    group_by(month) %>%
+    do({
+      model <- lm(avg_ret ~ mean_beta, data = .)
+      tidy(model)  
+    }) %>%
+    ungroup()
+  
+  regression_summary <- regressions %>%
+    filter(term %in% c("(Intercept)", "mean_beta")) %>%
+    pivot_wider(names_from = term, values_from = c(estimate, std.error, statistic)) %>%
+    rename(
+      gama0_monthly = `estimate_(Intercept)`,
+      s_gama0_monthly = `std.error_(Intercept)`,
+      t_gama0_monthly = `statistic_(Intercept)`,
+      gama1_monthly = `estimate_mean_beta`,
+      s_gama1_monthly = `std.error_mean_beta`,
+      t_gama1_monthly = `statistic_mean_beta`
+    )%>%
+    select(-contains("p.value"))
+  
+  #calculate the sample mean
+  mean_gama0 <- mean(regression_summary$gama0_monthly, na.rm = TRUE)
+  mean_gama1 <- mean(regression_summary$gama1_monthly, na.rm = TRUE)
+  
+  regression_summary1 <- regression_summary %>%
+    filter(!is.na(gama0_monthly))%>%
+    select(
+      month,
+      gama0_monthly,
+      s_gama0_monthly,
+      t_gama0_monthly
+    )
+  
+  regression_summary2 <- regression_summary %>%
+    filter(!is.na(gama1_monthly))%>%
+    select(
+      month,
+      gama1_monthly,
+      s_gama1_monthly,
+      t_gama1_monthly
+    )
+  
+  regression_summary <- regression_summary1 %>%
+    left_join(regression_summary2, by = "month")
+  
+  regression_summary <- regression_summary %>%
+    mutate(month_label = format(month, "%Y-%m"))
+  
+  regression_summary <- regression_summary %>%
+    left_join(ff_3factors_mon, by = "month_label") %>%
+    mutate(gama0_minus_rf = gama0_monthly - rf)
+  
+  mean_gama0_minus_rf <- mean(regression_summary$gama0_minus_rf, na.rm = TRUE)
+  
+  #calculate first-order serial correlation
+  corr_m0 <- cor(regression_summary$gama0_monthly, lag(regression_summary$gama0_monthly), use = "complete.obs")
+  corr_m1 <- cor(regression_summary$gama1_monthly, lag(regression_summary$gama1_monthly), use = "complete.obs")
+  
+  #assuming a correlation with a mean of 0
+  corr0_0 <- cor(regression_summary$gama0_monthly, lag(regression_summary$gama0_monthly) - mean_gama0, use = "complete.obs")
+  corr0_1 <- cor(regression_summary$gama1_monthly, lag(regression_summary$gama1_monthly) - mean_gama1, use = "complete.obs")
+  
+  #merge the results into table3
+  corr0_gamma0_minus_rf <- cor(regression_summary$gama0_minus_rf, lag(regression_summary$gama0_minus_rf) - mean_gama0_minus_rf, use = "complete.obs")
+  
+  t_gamma0_minus_rf <- regression_summary %>%
+    summarise(
+      t_gamma0_minus_rf = mean(gama0_minus_rf, na.rm = TRUE) / (sd(gama0_minus_rf, na.rm = TRUE) / sqrt(sum(!is.na(gama0_minus_rf))))
+    )
+  
+  t_gamma0 <- regression_summary %>%
+    summarise(
+      t_gamma0 = mean(gama0_monthly, na.rm = TRUE) / (sd(gama0_monthly, na.rm = TRUE) / sqrt(sum(!is.na(gama0_monthly))))
+    )
+  
+  t_gamma1 <- regression_summary %>%
+    summarise(
+      t_gamma1 = mean(gama1_monthly, na.rm = TRUE) / (sd(gama1_monthly, na.rm = TRUE) / sqrt(sum(!is.na(gama1_monthly))))
+    )
+  
+  table3 <- table3 %>%
+    cross_join(t_gamma0) %>%
+    cross_join(t_gamma1)
+  
+  corr_m1 <- tibble(corr_m1 = corr_m1)
+  corr_m0 <- tibble(corr_m0 = corr_m0)
+  
+  table3 <- table3 %>%
+    cross_join(corr_m1) %>%
+    cross_join(corr_m0) 
+}
+
+periods1 <- list()
+
+#define the start and end year
+start_year <- 1946
+end_year <- 2015
+
+#loop to generate each time period
+for (year in seq(start_year, end_year, by = 10)) {
+  start <- paste0(year, "-01-01")
+  end <- paste0(year + 9, "-12-31")
+  
+  #add the generated time period to the list
+  periods1[[length(periods1) + 1]] <- list(
+    start = start,
+    end = end)
+}
+
+periods2 <- list()
+
+#define the start and end year
+start_year <- 1941
+end_year <- 2020
+
+#loop to generate each time period
+for (year in seq(start_year, end_year, by = 5)) {
+  start <- paste0(year, "-01-01")
+  end <- paste0(year + 4, "-12-31")
+  
+  #add the generated time period to the list
+  periods2[[length(periods2) + 1]] <- list(
+    start = start,
+    end = end)
+}
+
+custom_periods1 <- list(start = "1935-01-01", end = "2022-12-31")
+custom_periods2 <- list(start = "1935-01-01", end = "1945-12-31")
+custom_periods3 <- list(start = "1935-01-01", end = "1940-12-31")
+custom_periods4 <- list(start = "2016-01-01", end = "2022-12-31")
+custom_periods5 <- list(start = "2021-01-01", end = "2022-12-31")
+
+#add time periods to the periods list
+combined_periods <- c(list(custom_periods1), list(custom_periods2), periods1, list(custom_periods4), list(custom_periods3), periods2, list(custom_periods5))
+
+#loop through each period and calculate results
+panela_for_table4 <- lapply(combined_periods, function(combined_periods) {
+  result <- table3_panela_for_table4_function(combined_results, combined_periods$start, combined_periods$end)
+  result$Period <- paste(combined_periods$start, "to", combined_periods$end)
+  return(result)
+})
+
+#combine results into a data frame
+t3_panela_for_table4 <- do.call(rbind, lapply(panela_for_table4, as.data.frame))
+
+#merge together
+table4 <- t4_rm_rf %>%
+  left_join(t3_panela_for_table4, by = "Period")%>%
+  mutate(
+    Rm_Rf_sd_rm = mean_Rm_Rf / sd_raw_mkt, 
+    gamma1_sd_rm = gamma1 / sd_raw_mkt 
+  )%>%
+  select(Period, mean_raw_mkt, mean_Rm_Rf, gamma1, gamma0, mean_rf, Rm_Rf_sd_rm, gamma1_sd_rm, 
+         sd_raw_mkt, sd_Rm_Rf, s_gamma0, sd_rf, t_stat_raw_mkt, t_stat_Rm_Rf, t_gamma1, t_gamma0,
+         serial_corr_raw_mkt, serial_corr_Rm_Rf, corr_m1, corr_m0, serial_corr_rf)%>%
+  rename(
+    Rm = mean_raw_mkt,
+    `Rm-Rf` = mean_Rm_Rf,
+    Rf = mean_rf,
+    `Rm-Rf / s(Rm)`= Rm_Rf_sd_rm,
+    `gamma1 / s(Rm)`= gamma1_sd_rm,
+    `s(Rm)` = sd_raw_mkt,
+    `s(Rm-Rf)` = sd_Rm_Rf,
+    `s(gamma0)` = s_gamma0,
+    `s(Rf)` = sd_rf,
+    `t(Rm)` = t_stat_raw_mkt,
+    `t(Rm-Rf)` = t_stat_Rm_Rf,
+    `t(gamma1)` = t_gamma1,
+    `t(gamma0)` = t_gamma0,
+    `Rho_m(Rm)` = serial_corr_raw_mkt,
+    `Rho_m(Rm-Rf)` = serial_corr_Rm_Rf,
+    `Rho_m(gamma1)` = corr_m1,
+    `Rho_m(gamma0)` = corr_m0,
+    `Rho_m(Rf)` = serial_corr_rf
+  )%>%
+  mutate(across(-Period, ~ round(as.numeric(.), 3)))%>%
+  mutate(Period = sub("^(\\d{4})-\\d{2}-\\d{2} to (\\d{4})-\\d{2}-\\d{2}$", "\\1-\\2", Period))
+
+
+#outputting table4
+write.xlsx(table4, "table4.xlsx", rowNames = FALSE)
+
+#finish by Kristina
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#start by Stephanie
+#TABLE 4 Fama Macbeth (1973) (in progress)
+#calculate excess returns and necessary statistics for Table 4
+table4_data_with_corr <- combined_results %>%
+  mutate(excess_mkt_ret = avg_mkt - rf,  # Market excess return using avg_mkt
+         excess_portfolio_ret = avg_ret - rf) %>%  # Portfolio excess return using avg_ret
+  group_by(month_label) %>%
+  summarise(
+    mean_rm_rf = mean(excess_mkt_ret, na.rm = TRUE),  # Mean market excess return
+    sd_rm = sd(excess_mkt_ret, na.rm = TRUE),  # Standard deviation of market returns
+    mean_rf = mean(rf, na.rm = TRUE),  # Mean risk-free rate
+    sd_rf = sd(rf, na.rm = TRUE),  # Standard deviation of risk-free rate
+    mean_ret = mean(avg_ret, na.rm = TRUE),  # Mean portfolio return
+    sd_ret = sd(avg_ret, na.rm = TRUE),  # Standard deviation of portfolio returns
+    first_order_corr_rm = ifelse(sd(excess_mkt_ret, na.rm = TRUE) == 0, NA, 
+                                 cor(lag(excess_mkt_ret), excess_mkt_ret, use = "complete.obs")),  # First-order autocorrelation of market return
+    first_order_corr_rf = ifelse(sd(rf, na.rm = TRUE) == 0, NA, 
+                                 cor(lag(rf), rf, use = "complete.obs"))  # First-order autocorrelation of risk-free rate
+  )
+
+
+# Calculate t-statistics for the returns and risk-free rate
+table4_stats <- table4_data_with_corr %>%
+  # Use mean_rm_rf instead of avg_mkt
+  mutate(
+    excess_mkt_ret = mean_rm_rf,  # Market excess return using mean_rm_rf
+    excess_portfolio_ret = mean_ret - mean_rf,  # Portfolio excess return using mean_ret and mean_rf
+    # Calculate t-statistics
+    t_rm_rf = ifelse(sd_rm == 0, NA, mean_rm_rf / (sd_rm / sqrt(n()))),  # t-stat for market excess return
+    t_rf = ifelse(sd_rf == 0, NA, mean_rf / (sd_rf / sqrt(n()))),  # t-stat for risk-free rate
+    t_ret = ifelse(sd_ret == 0, NA, mean_ret / (sd_ret / sqrt(n())))  # t-stat for portfolio return
+  ) %>%
+  # Calculate first-order autocorrelations
+  mutate(
+    first_order_corr_rm = cor(lag(excess_mkt_ret), excess_mkt_ret, use = "complete.obs", method = "pearson"),
+    first_order_corr_rf = cor(lag(mean_rf), mean_rf, use = "complete.obs", method = "pearson")
+  )
+
+table4 <- table4_stats %>%
+  select(
+    month_label,  # Replacing period with month_label
+    mean_rm_rf, sd_rm, t_rm_rf,  # Market excess return statistics
+    mean_rf, sd_rf, t_rf,  # Risk-free rate statistics
+    mean_ret, sd_ret, t_ret,  # Portfolio return statistics
+    first_order_corr_rm, first_order_corr_rf  # Other relevant metrics
+  )
+
+output_table4 <- table4_stats %>%
+  select(
+    month_label,  # You can replace this with any appropriate time grouping (period, year, etc.)
+    mean_rm_rf,   # Mean market excess return
+    sd_rm,        # Standard deviation of market returns
+    t_rm_rf,      # t-statistic for market excess return
+    mean_rf,      # Mean risk-free rate
+    sd_rf,        # Standard deviation of risk-free rate
+    t_rf,         # t-statistic for risk-free rate
+    mean_ret,     # Mean portfolio return
+    sd_ret,       # Standard deviation of portfolio returns
+    t_ret,        # t-statistic for portfolio returns
+    first_order_corr_rm,  # First-order autocorrelation of market return
+    first_order_corr_rf   # First-order autocorrelation of risk-free rate
+  )
+
+print(output_table4)

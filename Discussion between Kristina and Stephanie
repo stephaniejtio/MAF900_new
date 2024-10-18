@@ -185,5 +185,17 @@ Hey,
 2. I already checked your panel c, which is correct, thanks. 
 3. I added many codes for creating table 1 and formatting table 2 and table 3, please see my codes.(For table 3, i also modified the functions of four panels to add period and panel variables to them)
 4. For each table, I already formatted the variable names. 
-5. I uploaded table 1,2,3 xlsx files to github, which already formatted and we can use this result for our report. 
+5. I uploaded table 1,2,3 xlsx files to github, which already formatted and we can use this result for our report.
+
+Kristina (20241018)
+Hey,
+1. I found you used the wrong dataset to calculate rm rf. So, i created a new dataset named fi_mkt_rf to help with table 4. 
+2. I already found why you have a result of NA, two possible reasons, 1. you group by month to calculate mean, std, etc. 2. the value of rm-rf is not a numeric one. 
+3. I already outputted Table 4 with all periods. Please find it in Github. 
+4. In addition, i already modified a bit of codes, e.g., the tables format, data frame name, etc. 
+5. Please remember to pull all files this time. Thanks !!!
+6. Let us begin the work of report!!!
+
+
+
 
