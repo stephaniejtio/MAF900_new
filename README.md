@@ -30,6 +30,10 @@ Kristina is responsible for the following parts:
 7. Creating a function to collect all beta values got in table 2 from beta_1 to beta_3, average portfolio return, standard deviation of residuals and organize the betas into a exercisable table for the regression of table3, defining periods of the function. 
 8. Creating a function to create panel a and panel d in table 3. 
 9. Integrating all panels together to create table 3. 
+<<<<<<< HEAD
+=======
+10. Table 4. 
+>>>>>>> 6248f557996efa9f815b59de99e3611d6b3f78f8
 
 
 Stephanie is responsible for the following parts: 
