@@ -1,0 +1,21 @@
+Stephanie's individual statement on the responsibility for this project.
+
+Both of the members (Stephanie and Kristina) responsible for
+- README.md file and Report document, code consistency and format, Git repo
+
+Responsibility in R Studio code:
+1. Calculate Betas for each stock carefully to align with Fama's approach 
+2. Ranking the Betas to 20 portfolios (Portfolio Formation) and calculate the size for each portfolio
+3. Form regression calculates standard deviation of residuals for each portfolio
+4. Statistics calculation of s(ε^p), sˉp,t−1(ε^i), s(ε^p)/sˉp,t−1(ε^i) for Table 2
+5. Create Function to automate and calculate for other and the rest of the periods 
+with each portfolio, estimation, and testing periods 
+6. Create function to collect all betas values in Table 2 until beta_0
+7. Collect FF 3 factor data and Create Pre-requisites Function Gamma Table 3 
+8. Creating function to create Panel B and Panel C for Table 3
+
+
+
+
+
+
