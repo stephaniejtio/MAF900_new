@@ -30,15 +30,6 @@ Kristina is responsible for the following parts:
 7. Creating a function to collect all beta values got in table 2 from beta_1 to beta_3, average portfolio return, standard deviation of residuals and organize the betas into an exercisable table for the regression of table 3, defining periods of the function. 
 8. Create a function to create panel a and panel d in Table 3. 
 9. Integrating all panels together to create table 3. 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-10. Table 4. 
->>>>>>> 6248f557996efa9f815b59de99e3611d6b3f78f8
-=======
-10. Table 4. 
->>>>>>> 45e2a6a47c45d9a45494aa3cf4c1a26bfa15505b
-
 
 Stephanie is responsible for the following parts: 
 1. Calculate Betas for each stock aligning with Fama's approach 
@@ -75,6 +66,8 @@ Member 2
 Stephanie Tio
 
 Date: 20241017
+
+Note: we avoid creating additional folders/sections, to avoid conflicts and error in Git hub because we often encountered conflicts issue. Thank you.
 
 
 #Reference
