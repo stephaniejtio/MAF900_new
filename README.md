@@ -31,9 +31,13 @@ Kristina is responsible for the following parts:
 8. Creating a function to create panel a and panel d in table 3. 
 9. Integrating all panels together to create table 3. 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 10. Table 4. 
 >>>>>>> 6248f557996efa9f815b59de99e3611d6b3f78f8
+=======
+10. Table 4. 
+>>>>>>> 45e2a6a47c45d9a45494aa3cf4c1a26bfa15505b
 
 
 Stephanie is responsible for the following parts: 
@@ -53,6 +57,8 @@ Stephanie is responsible for the following parts:
 6. Discussion between Kristina and Stephanie -> All discussion between two members during this project period. 
 7. a3_code.R -> All codes. 
 8. codes provided by Dr Saikat.R -> Dr Saikat's share. 
+9. Kristina's statement of responsibility -> Responsibility statement
+10. Stephanie 's statement of responsibility -> Responsibility statement
 
 #Statement of Participation
 We promise that each member contributes to the assignment and is satisfied with each other's contributions. Please reach out if you have any questions. 
