@@ -30,6 +30,7 @@ Kristina is responsible for the following parts:
 7. Creating a function to collect all beta values got in table 2 from beta_1 to beta_3, average portfolio return, standard deviation of residuals and organize the betas into a exercisable table for the regression of table3, defining periods of the function. 
 8. Creating a function to create panel a and panel d in table 3. 
 9. Integrating all panels together to create table 3. 
+10. Table 4. 
 
 
 Stephanie is responsible for the following parts: 
@@ -49,6 +50,8 @@ Stephanie is responsible for the following parts:
 6. Discussion between Kristina and Stephanie -> All discussion between two members during this project period. 
 7. a3_code.R -> All codes. 
 8. codes provided by Dr Saikat.R -> Dr Saikat's share. 
+9. Kristina's statement of responsibility -> Responsibility statement
+10. Stephanie 's statement of responsibility -> Responsibility statement
 
 #Statement of Participation
 We promise that each member contributes to the assignment and is satisfied with each other's contributions. Please reach out if you have any questions. 
