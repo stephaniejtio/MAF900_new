@@ -3,11 +3,12 @@
 # You can find detailed work of each person in the following
 # Fama Macbeth (1973) Replication
 
-#The following codes are for MAF900 assignment 3 in T3 2024. 
+#The following codes are for MAF900 Replication Assignment 3 in T3 2024. 
 
 
 #########################
 #Start by kristina
+# install and add required packages 
 #install.packages("broom")
 #install.packages("slider")
 install.packages("officer")
@@ -19,6 +20,7 @@ install.packages("kableExtra")
 install.packages("xtable")
 install.packages("openxlsx")
 
+#Load required libraries 
 library(broom)
 library(RPostgres)
 library(tidyverse)
@@ -116,6 +118,7 @@ count_in_all_months <- nrow(count_valid_permno)
 #########################
 #Start by Stephanie
 #Portfolio formation 
+#This approach is based and aligned with Fama's paper (referring to page 615 - 618)
 #Calculate BETA for period 1926-1929
 capm_data1 <- capm_data %>%
   filter(month >= as.Date("1926-01-01") & month <= as.Date("1929-12-31"))
@@ -177,6 +180,7 @@ beta_results_only$portfolio <- rep(1:20, times = portfolio_sizes)
 
 #########################
 #Start from Kristina
+#This approach is based and aligned with Fama's paper (referring to page 615 - 618)
 #Calculate BETA for period 1930-1934
 capm_data2 <- capm_data %>%
   filter(month >= as.Date("1930-01-01") & month <= as.Date("1934-12-31")) 
@@ -372,9 +376,10 @@ stddev_residuals_by_portfolio3 <- portfolio_residuals3 %>%
   group_by(portfolio) %>%
   summarise(stddev_residuals = sd(residuals, na.rm = TRUE))
 
-#Join to table2
+#Perform join to Table 2
 table2 <- table2 %>%
   inner_join(stddev_residuals_by_portfolio3, by = "portfolio")
+
 #Finish by Stephanie
 #########################
 
@@ -382,8 +387,9 @@ table2 <- table2 %>%
 #########################
 #Start by Stephanie and Kristina
 #After confirming the accuracy of codes using the period 1. 
-#We generate a function to repeat the above steps by using different period.
+#We generate a function to repeat the above steps by using different period
 #Generalised function to perform Fama-MacBeth type analysis for a given period
+#Function input includes the capm data, portfolio, estimation, and testing start end end date of the period
 run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end, 
                                       estimation_start, estimation_end, estimation_end1, 
                                       estimation_end2, estimation_end3, testing_start,
@@ -449,6 +455,7 @@ run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end,
     arrange(beta)  #Ranking
   
   N <- nrow(beta_results_only)
+  # 20 portfolios based on the Fama paper (referring to page 615 of the paper)
   securities_per_portfolio <- floor(N / 20)
   remainder <- N - 20 * securities_per_portfolio
   first_last_extra <- floor(remainder / 2)
@@ -591,7 +598,7 @@ run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end,
     ungroup()%>%
     inner_join(beta_means_by_portfolio2, by = "portfolio")
   
-  #Calculate mean beta and std. 
+  #Calculate mean beta and standard deviation
   beta_means_by_portfolio2 <- beta_means_by_portfolio2 %>%
     group_by(portfolio) %>%
     summarise(
@@ -660,7 +667,7 @@ run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end,
 #########################
 #Start by Kristina
 #Define periods from Table 1
-#Initialize an empty list
+#Initialise an empty list for periods
 periods <- list()
 
 #Define the start and end year
@@ -720,7 +727,7 @@ results <- lapply(combined_periods, function(combined_periods) {
 #Combine results into a data frame
 combined_results_table1_2 <- do.call(rbind, lapply(results, as.data.frame))
 
-#Create table 1
+#Create Table 1
 table1 <- combined_results_table1_2 %>%
   filter(portfolio == 1) %>%
   mutate(
@@ -763,10 +770,10 @@ table1 <- combined_results_table1_2 %>%
 
 colnames(table1)[-1] <- paste0("Period", 1:(ncol(table1) - 1))
 
-#Output table1
+#Output Table 1
 write.xlsx(table1, "table1.xlsx", rowNames = FALSE)
 
-#Organizing table2
+#Organising table2
 table2 <- combined_results_table1_2 %>%
   filter(date3 == "1935-01-01" 
          | date3 == "1943-01-01"
@@ -855,7 +862,7 @@ write.xlsx(table2_combined, "table2.xlsx", rowNames = FALSE)
 #########################
 #Start by Stephanie and Kristina
 #TABLE 3
-###Collect FF 3 factor data to get Rf
+###Collect FF 3 factor data to get Rf (based on Dr. Saikat's lecture)
 #Based on Dr. Saikat's lecture Topic 6
 temp <- tempfile(fileext = ".zip")
 download.file("http://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_CSV.zip", temp)
@@ -936,12 +943,12 @@ calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start
     select(permno, beta = estimate, std_error = std.error) %>%
     filter(!is.na(beta))
   
-  #Arrange 
+  #Arrange betas
   beta_results_only <- beta_results_only %>%
     arrange(beta) 
   
   #Securities per portfolio, we use the number of row of the previous data we got / 20
-  #20 is the number of portfolio - based on the Fama paper
+  #20 is the number of portfolio - following the Fama paper approach
   N <- nrow(beta_results_only)
   securities_per_portfolio <- floor(N / 20)
   remainder <- N - 20 * securities_per_portfolio
@@ -974,7 +981,7 @@ calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start
               mean_std_beta = mean(std_error, na.rm = TRUE),
               mean_residual_sd = mean(residual_sd, na.rm = TRUE))  
   
- #Finish by Kristina and Stephanie. 
+#Finish by Kristina and Stephanie. 
 #########################
   
   
