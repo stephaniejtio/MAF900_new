@@ -8,7 +8,8 @@
 
 #########################
 #Start by Kristina
-# install and add required packages 
+#Install some necessary packages
+#install and add required packages 
 #install.packages("broom")
 #install.packages("slider")
 install.packages("officer")
