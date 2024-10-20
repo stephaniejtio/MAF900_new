@@ -50,7 +50,15 @@ with each portfolio, estimation, and testing periods
 Our data is getting from the lawful resources and it is fetched in our codes. When you run the r script (a3_code.R), 
 you will automatically get the data. 
 
-#Files in Github
+#Folers and Files in Github
+Folders:
+1. Readme File
+2. Table Results
+3. Codes and Discussion
+4. Member's Statement of Responsibility
+5. Report
+
+Files:
 1. README.md -> Introducing this project's aim, objectives, and details. 
 2. table1.xlsx -> Replication results output. 
 3. table2.xlsx -> Replication results output.
@@ -59,8 +67,9 @@ you will automatically get the data.
 6. Discussion between Kristina and Stephanie -> All discussions between two members during this project period. 
 7. a3_code.R -> All codes to replicate Table 1, 2, 3, 4, aligning the same approach with the Fama and MacBeth (1973) paper based on the assignment's specifications and requirements. 
 8. The codes provided by Dr Saikat.R -> Dr Saikat's share. 
-9. Kristina's statement of responsibility -> Responsibility Statement
-10. Stephanie's statement of responsibility -> Responsibility Statement
+9. Kristina's Statement of Responsibility -> Responsibility Statement
+10. Stephanie's Statement of Responsibility -> Responsibility Statement
+11. MAF900 - Report A3 -> Report to compare the differences
 
 #Statement of Participation
 We promise and ensure that each member has contributed to the project and is satisfied with each other's contributions. 

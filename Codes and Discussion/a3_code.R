@@ -2466,12 +2466,12 @@ periods1 <- list()
 start_year <- 1946
 end_year <- 2015
 
-#loop to generate each time period
+#Loop to generate each time period
 for (year in seq(start_year, end_year, by = 10)) {
   start <- paste0(year, "-01-01")
   end <- paste0(year + 9, "-12-31")
   
-  #add the generated time period to the list
+  #Add the generated time period to the list
   periods1[[length(periods1) + 1]] <- list(
     start = start,
     end = end)
@@ -2479,16 +2479,16 @@ for (year in seq(start_year, end_year, by = 10)) {
 
 periods2 <- list()
 
-#define the start and end year
+#Define the start and end year
 start_year <- 1941
 end_year <- 2020
 
-#loop to generate each time period
+#Loop to generate each time period
 for (year in seq(start_year, end_year, by = 5)) {
   start <- paste0(year, "-01-01")
   end <- paste0(year + 4, "-12-31")
   
-  #add the generated time period to the list
+  #Add the generated time period to the list
   periods2[[length(periods2) + 1]] <- list(
     start = start,
     end = end)
@@ -2500,17 +2500,17 @@ custom_periods3 <- list(start = "1935-01-01", end = "1940-12-31")
 custom_periods4 <- list(start = "2016-01-01", end = "2022-12-31")
 custom_periods5 <- list(start = "2021-01-01", end = "2022-12-31")
 
-#add time periods to the periods list
+#Add time periods to the periods list
 combined_periods <- c(list(custom_periods1), list(custom_periods2), periods1, list(custom_periods4), list(custom_periods3), periods2, list(custom_periods5))
 
-#loop through each period and calculate results
+#Loop through each period and calculate results
 panela_for_table4 <- lapply(combined_periods, function(combined_periods) {
   result <- table3_panela_for_table4_function(combined_results, combined_periods$start, combined_periods$end)
   result$Period <- paste(combined_periods$start, "to", combined_periods$end)
   return(result)
 })
 
-#combine results into a data frame
+#Combine results into a data frame
 t3_panela_for_table4 <- do.call(rbind, lapply(panela_for_table4, as.data.frame))
 
 #Merge together
