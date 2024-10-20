@@ -1,6 +1,6 @@
 ##Read me before you check the repository. 
 #The Aim of This Repository
-This project replicates the empirical analysis from Fama and MacBeth's 1973 paper, Risk, Return, and Equilibrium: Empirical Tests. The replication focuses on US stock data from January 1926 to December 2023 and reproduces the results in Tables 1, 2, 3, and 4 of the original paper.
+This project replicates the empirical analysis from Fama and MacBeth's 1973 paper, Risk, Return, and Equilibrium: Empirical Tests. The replication focuses on US stock data from January 1926 to December 2023 and reproduces the results in Tables 1, 2, 3, and 4 of the original paper. 
 The project is completed as part of the MAF900 unit for T2 2024. The assignment includes data collection, empirical analysis, and report creation using R / RStudio.
 
 #Background of Fama and Macbeth
@@ -11,6 +11,8 @@ The project is conducted by Kristina Li and Stephanie Tio.
 
 #Replication Logic
 We follow the 1973 Paper: 1. Collecting data, filtering data. 2. Use Period 1(1926-1938) to mock the results of Table 2 first, and then create function to generate Table 2 by updating each year. 3. Integrating all table 2 betas and std_residuals results to one data frame to run the regression of table 3. 4. Generating table 4. 
+
+Note: Based on the requirement of this project, Dr Saikat requests the students to collect the data until Dec 2023. After checking the rules of the three periods formation (Portfolio formation, Initial Estimation, Testing Period) and data appropriateness, we find it more appropriate to use December 2022 as the end date, which makes the report clearer and more understandable.
 
 #Members Responsibility 
 In the file named a3_code.R, we specify each member's input, e.g., start by xxx, finish by xxx, improved by xxx. 
