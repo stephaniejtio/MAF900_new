@@ -84,8 +84,6 @@ Stephanie Tio
 
 Date: 20241017
 
-Note: we avoid creating additional folders/sections, to avoid conflicts and error in Git hub because we often encountered conflicts issue. Thank you.
-
 
 #Reference
 Fama, E. F., & MacBeth, J. D. (1973). Risk, return, and equilibrium: Empirical tests. Journal of political economy, 81(3), 607-636.
