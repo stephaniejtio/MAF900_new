@@ -1,9 +1,10 @@
 Kristina's individual statement on the responsibility for this project. 
 
-In the file named a3_code.R, we both specify each member's input, e.g., start by xxx, finish by xxx, improved by xxx. 
-
-For details of mine:
-Both members are responsible README.md and Report.doc. 
+Both of the members (Stephanie and Kristina) are responsible for:
+- README.md file (instructions and details of the project)
+- Report document (analysis to compare findings of the replication with the original paper of Fama Macbeth)
+- Code consistency and formatting (ensuring readability) 
+- Git repo (our main project repository)  
 
 Additionally, I am responsible for the following parts: 
 1. Data collection 
@@ -17,3 +18,10 @@ with each portfolio, estimation, and testing periods
 8. Create a function to create panel a and panel d in Table 3. 
 9. Integrating all panels together to create table 3. 
 10. Calculating statistics in Table 4 and output. 
+
+My communication and collaboration with my team member (Stephanie) are through:
+- Microsoft Teams (meetings and calls for discussion)
+- WhatsApp (to update daily every time we commit and push to Git)
+- Google Docs (collaborate on the report)
+- Discussion document (available on Git, emphasizing our key points of discussion and specifying what we have updated)
+- Git Repository (commit, push, and pull daily)
