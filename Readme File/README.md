@@ -44,6 +44,9 @@ with each portfolio, estimation, and testing periods
 7. Collect FF 3 factor data and Create Pre-requisites Function Gamma Table 3 
 8. Creating a function to create Panel B and Panel C for Table 3
 
+#Data use in this project
+Our data is getting from the lawful resources and it is fetched in our codes. When you run the r script (a3_code.R), 
+you will automatically get the data. 
 
 #Files in Github
 1. README.md -> Introducing this project's aim, objectives, and details. 
