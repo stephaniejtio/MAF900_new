@@ -24,12 +24,14 @@ Kristina is responsible for the following parts:
 1. Data collection 
 2. Data filtering based on data requirements
 3. Statistics calculation of β_(p,t-1), s(β_{p,t-1}), r(Rp, Rm)^2, s(Rp) of period 1(1926-1938) mocking in table 2
-4. Creating a function to do the rest of the periods. 
+4. Create a Function to automate and calculate for other and the rest of the periods based on Fama's paper
+with each portfolio, estimation, and testing periods  
 5. Defining all periods from Table 1, creating table 1 and table 2. 
 6. Creating a function to collect all beta values got in Table 2 until beta_0. 
 7. Creating a function to collect all beta values got in table 2 from beta_1 to beta_3, average portfolio return, standard deviation of residuals and organize the betas into an exercisable table for the regression of table 3, defining periods of the function. 
 8. Create a function to create panel a and panel d in Table 3. 
 9. Integrating all panels together to create table 3. 
+10. Calculating statistics in Table 4 and output. 
 
 Stephanie is responsible for the following parts: 
 1. Calculate Betas for each stock aligning with Fama's approach 

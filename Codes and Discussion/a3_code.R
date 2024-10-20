@@ -7,7 +7,7 @@
 
 
 #########################
-#Start by kristina
+#Start by Kristina
 # install and add required packages 
 #install.packages("broom")
 #install.packages("slider")
@@ -182,6 +182,8 @@ portfolio_sizes <- c(
 
 #Create a variable named portfolio
 beta_results_only$portfolio <- rep(1:20, times = portfolio_sizes)
+#Finish by Stephanie
+#########################
 
 
 #########################
