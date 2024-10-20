@@ -58,6 +58,7 @@ with each portfolio, estimation, and testing periods
 #Statement of Participation
 We promise and ensure that each member has contributed to the project and is satisfied with each other's contributions. 
 Please feel free to reach out if you have any questions or clarifications.
+Our discussion and collaboration are via Microsoft Team meetings, WhatsApp, Discussion files (available on Git), and Google Docs. 
 
 Member 1
 Kristina Li
