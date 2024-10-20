@@ -5,7 +5,7 @@
 # Note: Based on the requirement of this project, Dr Saikat requests the students to collect the data 
 # until Dec 2023. After checking the rules of the three periods formation (Portfolio formation, Initial Estimation,
 # Testing Period) and data appropriateness, we find it more appropriate to use December 2022 as the end date, 
-# which makes the report clearer and more understandable.
+# which makes the report clearer and more understandable, please find the details below.
 
 #The following codes are for MAF900 Replication Assignment 3 in T3 2024. 
 
