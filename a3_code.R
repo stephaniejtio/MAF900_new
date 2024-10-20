@@ -55,10 +55,12 @@ wrds <- dbConnect(Postgres(),
                   user='s224294027')
 
 #Collect CRSP monthly stock return data 
+#Filtering data between the start of 1926 to the end of 2023
 msf_db <- tbl(wrds, sql("select * from crsp.msf"))
 start_date <- ymd("1926-01-01")
 end_date <- ymd("2023-12-31")
 
+#Select the relevant columns from the CRSP data for the analysis
 crsp_monthly <- msf_db |>
   filter(date >= start_date & date <= end_date) |>
   select(
@@ -70,6 +72,7 @@ crsp_monthly <- msf_db |>
 #Stock and exchange identifier
 msenames_db <- tbl(wrds, sql("select * from crsp.msenames"))
 
+#Filter and collect stock identifiers
 crsp_stockids <- msenames_db |>
   select (permno, primexch)|> collect()|>unique()|> filter(primexch == 'N')
 
@@ -109,9 +112,9 @@ count_valid_permno <- capm_data %>%
   summarize(months_count = n_distinct(format(month, "%Y-%m"))) %>%
   filter(months_count == 108)
 
-#The amount
+#The amount, count the number of securities
 count_in_all_months <- nrow(count_valid_permno)
-#Finish by kristina 
+#Finish by Kristina 
 #########################
 
 
@@ -120,12 +123,14 @@ count_in_all_months <- nrow(count_valid_permno)
 #Portfolio formation 
 #This approach is based and aligned with Fama's paper (referring to page 615 - 618)
 #Calculate BETA for period 1926-1929
+
+# Portfolio formation using estimated betas for the period 1926-1929
 capm_data1 <- capm_data %>%
   filter(month >= as.Date("1926-01-01") & month <= as.Date("1929-12-31"))
 capm_data1<- capm_data1 %>%
   inner_join(count_valid_permno, by = "permno")
 
-#Calculate beta for each company
+#Calculate beta for each security 
 beta_results <- capm_data1 %>%
   group_by(permno) %>%
   do(tidy(lm(raw_ret ~ raw_mkt, data = .)))
@@ -133,21 +138,22 @@ beta_results <- capm_data1 %>%
 #Print the results for beta
 print(beta_results)
 
-#Filter for the beta results
+#Filter for the beta results and extract the necessary statistics (beta, standard error, t-statistic, and p-value)
 beta_results_only <- beta_results %>%
   filter(term == "raw_mkt") %>%
   select(permno, beta = estimate, std_error = std.error, t_statistic = statistic, p_value = p.value)
 
-#Beta results for each of the company 
+#Beta results for each of the security 
 print(beta_results_only) 
 
-#Check for NA values 
+#Check for any missing values (NA) in the beta estimates
 sum(is.na(beta_results_only$beta)) 
 
 #Remove NA values from beta
 beta_results_only <- beta_results_only %>%
   filter(!is.na(beta))
 
+#Sort the securities by their estimated beta values
 beta_results_only <- beta_results_only %>%
   arrange(beta) 
 
@@ -163,7 +169,7 @@ securities_per_portfolio <- floor(N / 20)
 #Calculate the remainder, allocate to first and last portfolios
 remainder <- N - 20 * securities_per_portfolio
 
-#Determine number of securities, first and last portfolios
+#Determine number of securities, first and last portfolios (this is based on Fama's approach)
 first_last_extra <- floor(remainder / 2)
 last_portfolio_extra <- remainder %% 2  # If odd, last portfolio gets an extra security
 
@@ -181,7 +187,7 @@ beta_results_only$portfolio <- rep(1:20, times = portfolio_sizes)
 #########################
 #Start from Kristina
 #This approach is based and aligned with Fama's paper (referring to page 615 - 618)
-#Calculate BETA for period 1930-1934
+#Calculate BETA for period 1930-1934 using CAPM model
 capm_data2 <- capm_data %>%
   filter(month >= as.Date("1930-01-01") & month <= as.Date("1934-12-31")) 
 
@@ -200,12 +206,12 @@ beta_results2 <- capm_data2 %>%
       mutate(idsr = idsr)
   })
 
-#Getting the value of beta
+#Getting the value of beta and extract relevant statistics
 beta_results_only2 <- beta_results2 %>%
   filter(term == "raw_mkt") %>%
   select(permno, beta = estimate, std_error = std.error, t_statistic = statistic, p_value = p.value, idsr = idsr)
 
-#Remove for NA beta
+#Remove any missing beta values
 beta_results_only2 <- beta_results_only2 %>%
   filter(!is.na(beta))
 
@@ -361,7 +367,7 @@ table2 <- stddev_by_portfolio3 %>%
 #Start by Stephanie
 #Standard deviation of the portfolio residuals
 
-#Regression for each portfolio to get the residuals
+#Regression for each portfolio to get the residuals and calculate their standard deviation
 portfolio_residuals3 <- average_by_portfolio_month3 %>%
   group_by(portfolio) %>%
   do({
@@ -390,6 +396,7 @@ table2 <- table2 %>%
 #We generate a function to repeat the above steps by using different period
 #Generalised function to perform Fama-MacBeth type analysis for a given period
 #Function input includes the capm data, portfolio, estimation, and testing start end end date of the period
+
 run_fama_macbeth_analysis <- function(capm_data, portfolio_start, portfolio_end, 
                                       estimation_start, estimation_end, estimation_end1, 
                                       estimation_end2, estimation_end3, testing_start,
@@ -863,7 +870,10 @@ write.xlsx(table2_combined, "table2.xlsx", rowNames = FALSE)
 #Start by Stephanie and Kristina
 #TABLE 3
 ###Collect FF 3 factor data to get Rf (based on Dr. Saikat's lecture)
+#Fama-French 3-factor data from Kenneth French's
 #Based on Dr. Saikat's lecture Topic 6
+#We focus on extracting the risk-free rate (Rf) for use in cross-sectional regression models.
+
 temp <- tempfile(fileext = ".zip")
 download.file("http://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_CSV.zip", temp)
 temp1 <- unzip(temp, exdir = ".")
@@ -872,6 +882,7 @@ names(ff_3factors_monthly) <- c('dt', 'rmrf', 'smb', 'hml', 'rf')
 unlink(temp)
 unlink(temp1)
 
+# Convert data and cleaning the data from FF 3-factor data
 # Get date, RF, and month from the FF 3 factor data 
 ff_3factors_mon <- ff_3factors_monthly |> 
   filter(nchar(dt) == 6) |> 
@@ -888,8 +899,8 @@ ff_3factors_mon <- ff_3factors_monthly |>
   select(c('date', 'rf', 'month_label')) 
 
 
-#Function to help to get all betas used in Table 3 to get gammas
-#For Table 3, it requires us to run several different periods. 
+#Function to get all betas used in Table 3 to calculate gamma coefficients
+#For Table 3, it requires us to run several multiple periods. 
 #For convenience, creating a function to collect all betas and other statistics in different time point for Table 3. 
 calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start, portfolio_end, estimation_start, estimation_end, 
                                                       estimation_end1, estimation_end2, estimation_end3, testing_start, testing_start1, testing_end, 
@@ -897,14 +908,15 @@ calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start
                                                       testing_end_m2, testing_end_m3, testing_end_m4) {
   
   
-  #Identify the permno available in the first testing month
+  #Identify the permno (unique stock identifier) available in the first testing month
+  #This ensures that the securities analyzed are present throughout the testing period.
   permno_first_month <- capm_data %>%
     filter(month >= as.Date(testing_start)& month < as.Date(testing_start1)) %>%
     select(permno) %>%
     distinct() %>%
     pull(permno)
   
-  #Filter permno for valid periods and data requirements
+  #Filter permno for valid periods and data requirements (referring to Fama Macbeth paper, we should use data requirements)
   valid_permnos_formation <- capm_data %>%
     filter(month >= as.Date(portfolio_start) & month <= as.Date(portfolio_end)) %>%
     mutate(year = format(month, "%Y"), month = format(month, "%m")) %>%
@@ -916,7 +928,7 @@ calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start
     filter(years_count >= 4) %>%  
     pull(permno)
   
-  #Count the valid permno from capm_data
+  #Count the valid permno from the CAPM data for the estimation period.
   count_valid_permno  <- capm_data %>%
     filter(permno %in% valid_permnos_formation) %>%
     filter(month >= as.Date(estimation_start) & month <= as.Date(estimation_end)) %>%
@@ -929,10 +941,12 @@ calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start
     filter(years_count == 5) 
   
   #Assign portfolios based on ranked betas
+  #Following Fama-MacBeth (1973), the securities are sorted into 20 portfolios
   portfolio_data <- capm_data %>%
     filter(month >= as.Date(testing_start) & month <= as.Date(testing_end)) %>%
     inner_join(count_valid_permno, by = "permno")
   
+  #Estimate betas for each security using CAPM regression of security returns
   beta_results <- portfolio_data %>%
     group_by(permno) %>%
     do(tidy(lm(raw_ret ~ raw_mkt, data = .)))
@@ -943,24 +957,26 @@ calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start
     select(permno, beta = estimate, std_error = std.error) %>%
     filter(!is.na(beta))
   
-  #Arrange betas
+  #Arrange securities by beta for portfolio assignment
   beta_results_only <- beta_results_only %>%
     arrange(beta) 
   
   #Securities per portfolio, we use the number of row of the previous data we got / 20
-  #20 is the number of portfolio - following the Fama paper approach
+  #calculated as 1/20th of the total securities following Fama-MacBeth (1973)
   N <- nrow(beta_results_only)
   securities_per_portfolio <- floor(N / 20)
   remainder <- N - 20 * securities_per_portfolio
   first_last_extra <- floor(remainder / 2)
   last_portfolio_extra <- remainder %% 2
   
+  #Define portfolio sizes to distribute securities evenly
   portfolio_sizes <- c(
     securities_per_portfolio + first_last_extra,        # First portfolio
     rep(securities_per_portfolio, 18),                 # Middle portfolios
     securities_per_portfolio + first_last_extra + last_portfolio_extra  # Last portfolio
   )
   
+  #Assign portfolios to securities based on their beta values
   beta_results_only$portfolio <- rep(1:20, times = portfolio_sizes)
   
   #Update yearly, calculate portfolio beta and standard errors for the estimation periods
@@ -1040,6 +1056,7 @@ calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start
   
   
   #Calculate average returns by portfolio and month
+  #This section estimates average returns for each portfolios to prepare the data for the Fama-MacBeth cross-sectional regression.
   avg_returns_by_portfolio <- capm_data %>%
     filter(month >= as.Date(testing_start) & month <= as.Date(testing_end)) %>%
     inner_join(count_valid_permno, by = "permno") %>%
@@ -1050,7 +1067,7 @@ calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start
               avg_mkt = mean(raw_mkt, na.rm = TRUE)) %>%
     ungroup()
   
-  #Creating a dataframe to including all months in each year for betas
+  #Creating a data frames to including all months in each year for betas
   months_0 <- tibble(month = seq(ymd(testing_start_m1), ymd(testing_end_m1), by = "month")) %>%
     mutate(year = year(month), 
            month_label = format(month, "%Y-%m"))
@@ -1074,6 +1091,7 @@ calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start
     rename(mean_beta = mean_beta.x, mean_std_beta = mean_std_beta.x, mean_residual_sd=mean_residual_sd.x) 
   
   #Putting beta_1 to month 1
+  #Repeat for beta_1, beta_2, and beta_3
   beta_1 <- beta_1 %>%
     select(portfolio, mean_beta, mean_std_beta,mean_residual_sd) %>%
     expand_grid(months_1) %>%
@@ -1100,10 +1118,11 @@ calculate_gamma_table3_with_yearly_update <- function(capm_data, portfolio_start
     select(-mean_beta.y, -mean_std_beta.y, -mean_residual_sd.y) %>%  
     rename(mean_beta = mean_beta.x, mean_std_beta = mean_std_beta.x, mean_residual_sd= mean_residual_sd.x) 
   
-  #Combine together
+  #Combine all beta calculations into one data frame for further analysis
+  #This step prepares the combined dataset for cross-sectional regression analysis as per the Fama-MacBeth approach.
   combined <- bind_rows(beta_0, beta_1, beta_2, beta_3)
   
-  #Merging betas with average portfoli return
+  #Merging betas with average portfolio return
   avg_returns_by_portfolio <- avg_returns_by_portfolio %>%
     left_join(combined %>% select(portfolio, mean_beta, mean_std_beta, mean_residual_sd, month_label), 
               by = c("month_label" = "month_label", "portfolio" = "portfolio"))%>%
@@ -1431,16 +1450,18 @@ t3_panela <- do.call(rbind, lapply(panela, as.data.frame))
 #########################
 #Start by Stephanie, improved by Kristina
 #Table 3 Panel B
+#The goal here is to estimate gamma coefficients (γ0, γ1, and γ2) using the cross-sectional regressions proposed by Fama-MacBeth (1973).
 #Panel B have more complexity by using an additional squared term for beta (β²) in the regression
 #Regression PANEL B should include quadratic term 
 table3_panelb_function <- function(combined_results, start, end) {
   
   #Calculate gamma0, gamma1, and gamma2 using Fama-MacBeth regression (cross-sectional regression)
+  #The squared term allows capturing non-linear relationships between beta and returns.
   table3 <- combined_results %>%
     filter(month >= as.Date(start) & month <= as.Date(end)) %>%
     group_by(month) %>%
     do({
-      #panel B: Include the beta^2 term in the regression
+      #Panel B: Include the beta^2 term in the regression
       #and add gamma2 (based on Table 3 Panel B of the Fama Paper)
       model <- lm(avg_ret ~ mean_beta + mean_beta_square, data = .)
       tidy(model)
@@ -1456,7 +1477,7 @@ table3_panelb_function <- function(combined_results, start, end) {
       .groups = 'drop'
     )
   
-  # Adjusted R-squared calculation with mean_beta^2
+  # Calculate adjusted R-squared calculation with mean_beta^2
   adjusted_r2 <- combined_results %>%
     filter(month >= as.Date(start) & month <= as.Date(end)) %>%
     group_by(month) %>%
@@ -1470,6 +1491,7 @@ table3_panelb_function <- function(combined_results, start, end) {
     }) %>%
     ungroup()
   
+  #Calculate the average and standard deviation of adjusted R-squared
   mean_adjusted_r2 <- adjusted_r2 %>%
     summarise(mean_adj_r_squared = mean(adj_r_squared, na.rm = TRUE),
               sd_adj_r_squared = sd(adj_r_squared, na.rm = TRUE))
@@ -1477,6 +1499,7 @@ table3_panelb_function <- function(combined_results, start, end) {
   table3 <- table3 %>%
     left_join(mean_adjusted_r2, by = character())
   
+  #Extract regression coefficients
   regressions <- combined_results %>%
     filter(month >= as.Date(start) & month <= as.Date(end)) %>% 
     group_by(month) %>%
@@ -1486,6 +1509,7 @@ table3_panelb_function <- function(combined_results, start, end) {
     }) %>%
     ungroup()
   
+  #Pivot the regression results to analyse coefficients
   regression_summary <- regressions %>%
     filter(term %in% c("(Intercept)", "mean_beta","mean_beta_square")) %>%
     pivot_wider(names_from = term, values_from = c(estimate, std.error, statistic)) %>%
@@ -1502,11 +1526,12 @@ table3_panelb_function <- function(combined_results, start, end) {
     )%>%
     select(-contains("p.value"))
   
-  #calculate the sample mean
+  #Calculate the mean gamma values for Panel B
   mean_gama0 <- mean(regression_summary$gama0_monthly, na.rm = TRUE)
   mean_gama1 <- mean(regression_summary$gama1_monthly, na.rm = TRUE)
   mean_gama2 <- mean(regression_summary$gama2_monthly, na.rm = TRUE)
   
+  #Regression summary 
   regression_summary1 <- regression_summary %>%
     filter(!is.na(gama0_monthly))%>%
     select(
@@ -1534,6 +1559,7 @@ table3_panelb_function <- function(combined_results, start, end) {
       t_gama2_monthly
     )
   
+  #Merge regression summaries
   regression_summary <- regression_summary1 %>%
     left_join(regression_summary2, by = "month")%>%
     left_join(regression_summary3, by = "month")
@@ -1541,17 +1567,18 @@ table3_panelb_function <- function(combined_results, start, end) {
   regression_summary <- regression_summary %>%
     mutate(month_label = format(month, "%Y-%m"))
   
+  #Adjust gamma0 by subtracting risk-free rate (rf)
   regression_summary <- regression_summary %>%
     left_join(ff_3factors_mon, by = "month_label") %>%
     mutate(gama0_minus_rf = gama0_monthly - rf)
   
   mean_gama0_minus_rf <- mean(regression_summary$gama0_minus_rf, na.rm = TRUE)
   
-  #Calculate first-order serial correlation
+  #Calculate first-order serial correlation of gamma coefficients
   corr_m0 <- cor(regression_summary$gama0_monthly, lag(regression_summary$gama0_monthly), use = "complete.obs")
   corr_m1 <- cor(regression_summary$gama1_monthly, lag(regression_summary$gama1_monthly), use = "complete.obs")
   
-  #Assuming a correlation with a mean of 0
+  #Assuming a correlation with a mean of 0 for gamma coefficients 
   corr0_0 <- cor(regression_summary$gama0_monthly, lag(regression_summary$gama0_monthly) - mean_gama0, use = "complete.obs")
   corr0_1 <- cor(regression_summary$gama1_monthly, lag(regression_summary$gama1_monthly) - mean_gama1, use = "complete.obs")
   corr0_2 <- cor(regression_summary$gama2_monthly, lag(regression_summary$gama2_monthly) - mean_gama2, use = "complete.obs")
