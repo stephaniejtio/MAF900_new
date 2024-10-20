@@ -1,18 +1,29 @@
 Stephanie's individual statement on the responsibility for this project.
 
-Both of the members (Stephanie and Kristina) responsible for
-- README.md file and Report document, code consistency and format, Git repo
+Both of the members (Stephanie and Kristina) are responsible for:
+- README.md file (instructions and details of the project)
+- Report document (analysis to compare findings of the replication with the original paper of Fama Macbeth)
+- Code consistency and formatting (ensuring readability) 
+- Git repo (our main project repository) 
 
 Responsibility in R Studio code:
 1. Calculate Betas for each stock carefully to align with Fama's approach 
 2. Ranking the Betas to 20 portfolios (Portfolio Formation) and calculate the size for each portfolio
 3. Form regression calculates standard deviation of residuals for each portfolio
-4. Statistics calculation of s(ε^p), sˉp,t−1(ε^i), s(ε^p)/sˉp,t−1(ε^i) for Table 2
-5. Create Function to automate and calculate for other and the rest of the periods 
+4. Statistics calculation of s(ε^p), sˉp,t−1(ε^i), s(ε^p)/sˉp,t−1(ε^i) for Table 2 (Page 620 of the Fama and Macbeth paper)
+5. Create an R Function to automate and calculate for others and the rest of the periods 
 with each portfolio, estimation, and testing periods 
-6. Create function to collect all betas values in Table 2 until beta_0
+6. Create an R function to collect all betas values in Table 2 until beta_0
 7. Collect FF 3 factor data and Create Pre-requisites Function Gamma Table 3 
-8. Creating function to create Panel B and Panel C for Table 3
+8. Creating R functions to create Table 3 Panel B and Table 3 Panel C based on our approach from our discussion and Fama's paper
+
+My communication and collaboration with my team member (Kristina) are through:
+- Microsoft Teams (meetings and calls for discussion)
+- WhatsApp (to update daily every time we commit and push to Git)
+- Google Docs (collaborate on the report)
+- Discussion document (available on Git, emphasizing our key points of discussion and specifying what we have updated)
+- Git Repository (commit, push, and pull daily)
+
 
 
 
